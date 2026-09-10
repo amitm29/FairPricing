@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Github } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -8,8 +9,8 @@ export function LandingFooter() {
       <div className="container mx-auto px-4 py-10">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex flex-col items-center md:items-start gap-1">
-            <Link href="/" className="text-lg font-bold">
-              FairPricing
+            <Link href="/" className="flex items-center gap-2 text-lg font-bold">
+              <Image src="/fairpricing.svg" alt="" width={30} height={30}/>FairPricing
             </Link>
             <p className="text-sm text-muted-foreground">
               Smarter regional pricing for the App Store and Google Play.
