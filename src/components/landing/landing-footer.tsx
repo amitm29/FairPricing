@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 
 export function LandingFooter() {
   return (
-    <footer className="border-t bg-muted/30">
-      <div className="container mx-auto px-4 py-10">
+    <footer className="border-t bg-background">
+      <div className="mx-auto max-w-7xl px-5 py-10">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex flex-col items-center md:items-start gap-1">
             <Link href="/" className="flex items-center gap-2 text-lg font-bold">

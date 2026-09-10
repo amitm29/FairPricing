@@ -11,7 +11,7 @@ export function LandingNav() {
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-14 items-center justify-between px-4">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5">
         <Link href="/" className="flex items-center gap-2 text-lg font-bold">
           <Image src="/fairpricing.svg" alt="" width={30} height={30}/>FairPricing
         </Link>
