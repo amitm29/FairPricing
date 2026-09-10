@@ -1,0 +1,13 @@
+.git
+.env*
+node_modules
+.next
+.wrangler
+.sessions.json
+.exchange-rates.json
+*.p8
+*.pem
+*credentials*.json
+*service-account*.json
+docs/superpowers
+CLAUDE.md
