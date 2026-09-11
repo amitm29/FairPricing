@@ -5,9 +5,10 @@ import { useAuthStore } from '@/store/auth-store';
 import { pricingDraftKey } from '@/components/pricing/draft-key';
 
 import { StrategyPicker } from '@/components/pricing/strategy-picker';
+import { RegionFilterBar } from '@/components/pricing/region-filter-bar';
 import { AdvancedPricingControls, usePricingOptions, pricingOptionsError, useRegionalOverrides, RegionalOverride, calculateConnectedPrices, useSavedPricingSetting } from '@/components/pricing/advanced-controls';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Calculator, DollarSign, AlertTriangle, Loader2, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -462,6 +463,33 @@ export function AppleSubscriptionBulkPricingModal({
     return items;
   }, [previewPrices, sortConfig]);
 
+  // A territory counts as modified when it has no price yet, or its price would
+  // move by at least half a percent. Territories without tier data never do.
+  const isModifiedPreview = useCallback(
+    (preview: PreviewPrice) =>
+      !preview.noTierData &&
+      (preview.currentPrice === null || (preview.priceChange !== null && Math.abs(preview.priceChange) >= 0.5)),
+    []
+  );
+
+  // View filters for the territory table. They narrow what is shown, not what is selected.
+  const [regionQuery, setRegionQuery] = useState('');
+  const [showOnlyModified, setShowOnlyModified] = useState(false);
+  const visiblePreviewPrices = useMemo(() => {
+    const needle = regionQuery.trim().toLowerCase();
+    return sortedPreviewPrices.filter((preview) => {
+      if (showOnlyModified && !isModifiedPreview(preview)) return false;
+      if (!needle) return true;
+      return (
+        preview.territoryCode.toLowerCase().includes(needle) ||
+        preview.territoryAlpha3.toLowerCase().includes(needle) ||
+        preview.countryName.toLowerCase().includes(needle) ||
+        preview.currency.toLowerCase().includes(needle)
+      );
+    });
+  }, [sortedPreviewPrices, regionQuery, showOnlyModified, isModifiedPreview]);
+  const modifiedCount = useMemo(() => sortedPreviewPrices.filter(isModifiedPreview).length, [sortedPreviewPrices, isModifiedPreview]);
+
   // Auto-select regions where the target price deviates from current price
   useEffect(() => {
     // Only run if modal is open, we haven't initialized yet, and data fetching is COMPLETE
@@ -882,11 +910,7 @@ export function AppleSubscriptionBulkPricingModal({
                       onClick={() => {
                         const next = new Set<string>();
                         previewPrices.forEach((preview) => {
-                          if (preview.noTierData) return;
-                          const isDifferent =
-                            preview.currentPrice === null ||
-                            (preview.priceChange !== null && Math.abs(preview.priceChange) >= 0.5);
-                          if (isDifferent) next.add(preview.territoryCode);
+                          if (isModifiedPreview(preview)) next.add(preview.territoryCode);
                         });
                         setSelectedRegions(next);
                       }}
@@ -904,6 +928,15 @@ export function AppleSubscriptionBulkPricingModal({
                     </Button>
                   </div>
                 </div>
+                <RegionFilterBar
+                  query={regionQuery}
+                  onQueryChange={setRegionQuery}
+                  onlyModified={showOnlyModified}
+                  onOnlyModifiedChange={setShowOnlyModified}
+                  shown={visiblePreviewPrices.length}
+                  total={sortedPreviewPrices.length}
+                  modified={modifiedCount}
+                />
                 <div className="border rounded-lg">
                   <div>
                     <TooltipProvider delayDuration={100}>
@@ -955,7 +988,14 @@ export function AppleSubscriptionBulkPricingModal({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {sortedPreviewPrices.map((preview) => {
+                        {visiblePreviewPrices.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={99} className="py-10 text-center text-sm text-muted-foreground">
+                              {showOnlyModified && !regionQuery ? 'No territories would change with these settings.' : 'No territories match.'}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {visiblePreviewPrices.map((preview) => {
                           const isSelected = selectedRegions.has(preview.territoryCode);
                           const rowClassName = preview.noTierData
                             ? 'bg-destructive/5'

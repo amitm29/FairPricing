@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { pricingDraftKey } from '@/components/pricing/draft-key';
 
 import { StrategyPicker } from '@/components/pricing/strategy-picker';
+import { RegionFilterBar } from '@/components/pricing/region-filter-bar';
 import { AdvancedPricingControls, usePricingOptions, pricingOptionsError, useRegionalOverrides, RegionalOverride, calculateConnectedPrices, useSavedPricingSetting } from '@/components/pricing/advanced-controls';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -448,6 +449,8 @@ export function BulkPricingModal({
         currentPriceNum,
         change,
         newPriceNum: targetPriceNum,
+        // New region, or a price that moves by at least half a percent.
+        isModified: !currentPrice || Math.abs(change) >= 0.5,
       };
     });
 
@@ -505,6 +508,23 @@ export function BulkPricingModal({
 
     return items;
   }, [previewPrices, sortConfig, allRegions, getCurrentPrice]);
+
+  // View filters for the region table. They narrow what is shown, not what is selected.
+  const [regionQuery, setRegionQuery] = useState('');
+  const [showOnlyModified, setShowOnlyModified] = useState(false);
+  const visiblePreviewPrices = useMemo(() => {
+    const needle = regionQuery.trim().toLowerCase();
+    return sortedPreviewPrices.filter((item) => {
+      if (showOnlyModified && !item.isModified) return false;
+      if (!needle) return true;
+      return (
+        item.regionCode.toLowerCase().includes(needle) ||
+        item.countryName.toLowerCase().includes(needle) ||
+        item.currencyCode.toLowerCase().includes(needle)
+      );
+    });
+  }, [sortedPreviewPrices, regionQuery, showOnlyModified]);
+  const modifiedCount = useMemo(() => sortedPreviewPrices.filter((item) => item.isModified).length, [sortedPreviewPrices]);
 
   // Auto-select regions where the target price deviates from current price
   useEffect(() => {
@@ -874,15 +894,8 @@ export function BulkPricingModal({
                   onClick={() => {
                     const next = new Set<string>();
                     const appleBaseRegion = platform === 'apple' ? baseRegion : null;
-                    previewPrices.forEach((calculated) => {
-                      const current = getCurrentPrice(calculated.regionCode);
-                      const currentNum = current ? moneyToNumber(current) : 0;
-                      const targetNum = moneyToNumber(calculated.price);
-                      const change = calculatePriceChange(currentNum, targetNum);
-                      const isDifferent = !current || Math.abs(change) >= 0.5;
-                      if (isDifferent || calculated.regionCode === appleBaseRegion) {
-                        next.add(calculated.regionCode);
-                      }
+                    sortedPreviewPrices.forEach((item) => {
+                      if (item.isModified || item.regionCode === appleBaseRegion) next.add(item.regionCode);
                     });
                     setSelectedRegions(next);
                   }}
@@ -900,6 +913,15 @@ export function BulkPricingModal({
                 </Button>
               </div>
             </div>
+            <RegionFilterBar
+              query={regionQuery}
+              onQueryChange={setRegionQuery}
+              onlyModified={showOnlyModified}
+              onOnlyModifiedChange={setShowOnlyModified}
+              shown={visiblePreviewPrices.length}
+              total={sortedPreviewPrices.length}
+              modified={modifiedCount}
+            />
             <div className="border rounded-lg">
               <div>
                 <TooltipProvider delayDuration={100}>
@@ -958,7 +980,14 @@ export function BulkPricingModal({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedPreviewPrices.map((calculated) => {
+                    {visiblePreviewPrices.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={99} className="py-10 text-center text-sm text-muted-foreground">
+                          {showOnlyModified && !regionQuery ? 'No regions would change with these settings.' : 'No regions match.'}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {visiblePreviewPrices.map((calculated) => {
                       const currentPrice = getCurrentPrice(
                         calculated.regionCode
                       );
