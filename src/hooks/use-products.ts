@@ -1,3 +1,4 @@
+import { useStreamingMutation } from './use-streaming-mutation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Money } from '@/lib/google-play/types';
 import { parseMoney } from '@/lib/google-play/types';
@@ -111,7 +112,8 @@ export function useUpdateProductPrices(platformOverride?: 'google' | 'apple') {
       defaultPrice,
     }: {
       sku: string;
-      prices: Record<string, Money>;
+      /** Calculated amounts, or — for Apple after the review step — price point IDs resolved by App Store Connect. */
+      prices: Record<string, Money | { pricePointId: string }>;
       defaultPrice?: Money;
     }) => {
       const url = platform === 'apple'
@@ -181,4 +183,36 @@ export function useDeleteRegionPrice(platformOverride?: 'google' | 'apple') {
       queryClient.invalidateQueries({ queryKey: ['platform-products', platform] });
     },
   });
+}
+
+export interface BatchResolvedPricePoints {
+  resolved: Record<string, { pricePointId: string; tierPrice: number }>;
+  skipped: string[];
+}
+
+/** Resolve each territory's live App Store Connect price point for an in-app product, with streamed progress. */
+export function useResolveAppleProductPricePoints() {
+  const streaming = useStreamingMutation<BatchResolvedPricePoints>();
+
+  const mutateAsync = async ({
+    sku,
+    territories,
+  }: {
+    sku: string;
+    territories: Record<string, { targetPrice: number; currency: string; maxPrice?: number }>;
+  }) => {
+    return streaming.mutateAsync(`/api/apple/products/${encodeURIComponent(sku)}/price-points/batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ territories }),
+    });
+  };
+
+  return {
+    mutateAsync,
+    isPending: streaming.isPending,
+    progress: streaming.progress,
+    error: streaming.error,
+    reset: streaming.reset,
+  };
 }

@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { pricingDraftKey } from '@/components/pricing/draft-key';
 
 import { StrategyPicker } from '@/components/pricing/strategy-picker';
+import { ResolvedPricesReview, type ResolvedPriceRow } from '@/components/pricing/resolved-prices-review';
 import { RegionFilterBar } from '@/components/pricing/region-filter-bar';
 import { AdvancedPricingControls, usePricingOptions, pricingOptionsError, useRegionalOverrides, RegionalOverride, calculateConnectedPrices, useSavedPricingSetting } from '@/components/pricing/advanced-controls';
 
@@ -31,7 +32,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
@@ -174,13 +174,14 @@ export function AppleSubscriptionBulkPricingModal({
   const [selectedRegions, setSelectedRegions] = useState<Set<string>>(new Set());
   const [startDate, setStartDate] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [hasInitializedSelection, setHasInitializedSelection] = useState(false);
   const [pppFetched, setPppFetched] = useState(false);
   const [exchangeRatesFetched, setExchangeRatesFetched] = useState(false);
-  const [updateSummary, setUpdateSummary] = useState<{
-    changing: Array<{ name: string; old: string; new: string; regionCode: string }>;
-    staying: Array<{ name: string; price: string; regionCode: string }>;
+  const [review, setReview] = useState<{
+    rows: ResolvedPriceRow[];
+    resolved: Record<string, { pricePointId: string; tierPrice: number }>;
+    skipped: { code: string; name: string }[];
+    unchangedCount: number;
   } | null>(null);
   const [sortConfig, setSortConfig] = useState<{
     key: string;
@@ -587,104 +588,71 @@ export function AppleSubscriptionBulkPricingModal({
   };
 
   // Apply bulk pricing
-  const handleApplyClick = () => {
+  // Apply is two explicit steps. First ask App Store Connect what it would
+  // actually charge in every selected territory (read-only, streamed
+  // progress), then show that — with anything that differs from the preview
+  // called out — and only write on Confirm.
+  const handleApplyClick = async () => {
     if (selectedRegions.size === 0) {
       toast.error('Please select at least one region');
       return;
     }
-
     if (previewPrices.length === 0) {
       toast.error('Please enter a valid base price');
       return;
     }
 
-    const changing: Array<{
-      name: string;
-      regionCode: string;
-      old: string;
-      new: string;
-    }> = [];
-    const staying: Array<{
-      name: string;
-      regionCode: string;
-      price: string;
-    }> = [];
-
-    allTerritories.forEach(territory => {
-      const previewItem = previewPrices.find(p => p.territoryCode === territory.alpha2);
-      const isSelected = selectedRegions.has(territory.alpha2);
-      const currentPriceData = subscription.prices[territory.alpha2];
-      const currentPriceFormatted = currentPriceData
-        ? formatPrice(currentPriceData.customerPrice, currentPriceData.currency)
-        : 'None';
-
-      if (isSelected && previewItem && !previewItem.noTierData) {
-        changing.push({
-          name: territory.name,
-          regionCode: territory.alpha2,
-          old: currentPriceFormatted,
-          new: formatPrice(previewItem.tierPrice, previewItem.currency)
-        });
-      } else {
-        staying.push({
-          name: territory.name,
-          regionCode: territory.alpha2,
-          price: currentPriceFormatted
-        });
-      }
-    });
-
-    setUpdateSummary({ changing, staying });
-    setShowConfirmDialog(true);
-  };
-
-  const executeApply = async () => {
-    // Filter to only selected regions
     const selectedPreviewPrices = previewPrices.filter(p => selectedRegions.has(p.territoryCode));
-
-    // Check for regions without tier data
     const regionsWithoutTiers = selectedPreviewPrices.filter(p => p.noTierData);
     if (regionsWithoutTiers.length > 0) {
       toast.warning(`Skipping ${regionsWithoutTiers.length} regions without Apple tier data`);
     }
-
-    // Filter to only regions with valid tier data
     const validPrices = selectedPreviewPrices.filter(p => !p.noTierData && p.tier);
-
     if (validPrices.length === 0) {
       toast.error('No valid price tiers found for any selected region');
       return;
     }
 
-    setIsSaving(true);
-    setShowConfirmDialog(false);
+    const territories: Record<string, { targetPrice: number; currency: string; maxPrice?: number }> = {};
+    for (const p of validPrices) {
+      territories[p.territoryCode] = {
+        targetPrice: p.tierPrice,
+        ...(pricingOptions.capAtBase ? { maxPrice: p.tierPrice } : {}),
+        currency: p.currency,
+      };
+    }
 
     try {
-      // Phase 1: Resolve price points server-side in a single request
-      const territories: Record<string, { targetPrice: number; currency: string; maxPrice?: number }> = {};
-      for (const p of validPrices) {
-        territories[p.territoryCode] = {
-          targetPrice: p.tierPrice,
-          ...(pricingOptions.capAtBase ? {maxPrice:p.tierPrice} : {}),
-          currency: p.currency,
-        };
-      }
-
       const { resolved, skipped } = await resolveMutation.mutateAsync({
         subscriptionId: subscription.id,
         territories,
       });
-
-      const skipCount = skipped.length;
-
       if (Object.keys(resolved).length === 0) {
         toast.error('Failed to resolve any prices to Apple price points');
         return;
       }
+      const byCode = new Map(validPrices.map(p => [p.territoryCode, p]));
+      const rows: ResolvedPriceRow[] = Object.entries(resolved).map(([code, r]) => {
+        const preview = byCode.get(code)!;
+        return { code, name: preview.countryName, currency: preview.currency, current: preview.currentPrice, previewed: preview.tierPrice, resolved: r.tierPrice };
+      });
+      setReview({
+        rows,
+        resolved,
+        skipped: skipped.map(code => ({ code, name: byCode.get(code)?.countryName ?? code })),
+        unchangedCount: allTerritories.length - rows.length - skipped.length,
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to resolve price points');
+    }
+  };
 
-      // Phase 2: Build prices payload and update via streaming mutation
+  const confirmApply = async () => {
+    if (!review) return;
+    setIsSaving(true);
+    try {
       const prices: Record<string, { pricePointId: string; startDate?: string }> = {};
-      for (const [territoryCode, { pricePointId }] of Object.entries(resolved)) {
+      for (const [territoryCode, { pricePointId }] of Object.entries(review.resolved)) {
         prices[territoryCode] = {
           pricePointId,
           ...(isApproved && startDate ? { startDate } : {}),
@@ -697,17 +665,13 @@ export function AppleSubscriptionBulkPricingModal({
         preserveCurrentPrice,
       });
 
-      const successCount = Object.keys(resolved).length;
-      if (skipCount > 0) {
-        toast.success(`Updated ${successCount} regions (${skipCount} skipped)`);
-      } else {
-        toast.success(`Updated prices for ${successCount} regions`);
-      }
+      const successCount = review.rows.length;
+      const skipCount = review.skipped.length;
+      toast.success(skipCount > 0 ? `Updated ${successCount} regions (${skipCount} skipped)` : `Updated prices for ${successCount} regions`);
+      setReview(null);
       onOpenChange(false);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to update prices'
-      );
+      toast.error(error instanceof Error ? error.message : 'Failed to update prices');
     } finally {
       setIsSaving(false);
     }
@@ -1107,90 +1071,29 @@ export function AppleSubscriptionBulkPricingModal({
             onClick={handleApplyClick}
             disabled={previewPrices.length === 0 || isSaving || resolveMutation.isPending || updateMutation.isPending}
           >
-            {isSaving || resolveMutation.isPending || updateMutation.isPending ? (
+            {resolveMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {resolveMutation.isPending && resolveMutation.progress
-                  ? `Resolving price points ${resolveMutation.progress.completed} of ${resolveMutation.progress.total}...`
-                  : updateMutation.progress
-                    ? `${updateMutation.progress.phase === 'delete' ? 'Clearing' : 'Updating'} ${updateMutation.progress.completed} of ${updateMutation.progress.total}...`
-                    : 'Resolving price points...'}
+                {resolveMutation.progress
+                  ? `Resolving price points ${resolveMutation.progress.completed} of ${resolveMutation.progress.total}…`
+                  : 'Resolving price points…'}
               </>
             ) : (
-              `Apply to ${validSelectedCount} Regions`
+              `Review ${validSelectedCount} resolved prices`
             )}
           </Button>
         </DialogFooter>
 
-        {/* Confirmation Dialog */}
-        <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-          <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
-            <DialogHeader className="flex-shrink-0 text-left">
-              <DialogTitle>Confirm Price Changes</DialogTitle>
-              <DialogDescription asChild>
-                <div className="text-sm text-muted-foreground">
-                  Review the updates before applying them to {selectedRegions.size} regions.
-                  {isApproved && startDate && (
-                    <div className="mt-2 text-primary font-medium">
-                      New prices will take effect on {startDate}.
-                    </div>
-                  )}
-                </div>
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="flex-1 min-h-[300px] py-4 overflow-hidden border-y my-2">
-              <ScrollArea className="h-[50vh] pr-4">
-                <div className="space-y-6">
-                  {/* Section: Changing */}
-                  <div>
-                    <h4 className="font-semibold text-sm mb-2 text-primary flex items-center gap-2 sticky top-0 bg-background py-1 z-10">
-                      <span className="h-2 w-2 rounded-full bg-primary" />
-                      Updating ({updateSummary?.changing.length})
-                    </h4>
-                    <div className="grid grid-cols-1 gap-1 pl-4">
-                      {updateSummary?.changing.map(item => (
-                        <div key={item.regionCode} className="text-xs flex justify-between border-b border-muted/30 py-1">
-                          <span className="font-medium">{item.name} ({item.regionCode})</span>
-                          <span className="font-mono">
-                            <span className="text-muted-foreground line-through">{item.old}</span>
-                            <span className="mx-2 text-muted-foreground">→</span>
-                            <span className="font-semibold text-primary">{item.new}</span>
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Section: Staying */}
-                  <div>
-                    <h4 className="font-semibold text-sm mb-2 text-muted-foreground flex items-center gap-2 sticky top-0 bg-background py-1 z-10">
-                      <span className="w-2 h-2 rounded-full bg-gray-300" />
-                      No Change ({updateSummary?.staying.length})
-                    </h4>
-                    <div className="grid grid-cols-1 gap-1 pl-4 opacity-70 text-muted-foreground">
-                      {updateSummary?.staying.map(item => (
-                        <div key={item.regionCode} className="text-xs flex justify-between py-1 border-b border-muted/10">
-                          <span>{item.name} ({item.regionCode})</span>
-                          <span className="font-mono">{item.price}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </ScrollArea>
-            </div>
-
-            <DialogFooter className="flex-shrink-0 gap-2 sm:gap-0">
-              <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
-                Cancel
-              </Button>
-              <Button onClick={executeApply}>
-                Confirm and Apply
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <ResolvedPricesReview
+          open={review !== null}
+          onOpenChange={(next) => { if (!next) setReview(null); }}
+          rows={review?.rows ?? []}
+          skipped={review?.skipped ?? []}
+          unchangedCount={review?.unchangedCount ?? 0}
+          isApplying={isSaving || updateMutation.isPending}
+          applyProgress={updateMutation.progress ? `${updateMutation.progress.phase === 'delete' ? 'Clearing' : 'Updating'} ${updateMutation.progress.completed} of ${updateMutation.progress.total}…` : null}
+          onConfirm={confirmApply}
+        />
       </DialogContent>
     </Dialog>
   );

@@ -5,7 +5,6 @@ import {
   getInAppPurchase,
   getBaseTerritoryForProduct,
   getInAppPurchasePrices,
-  updateInAppPurchasePrice,
   updateInAppPurchasePrices,
   resolvePPPPricesToPricePoints,
   AppleApiError,
@@ -235,25 +234,26 @@ export async function PATCH(
 
       updatedCount = result.resolved.length;
     } else {
-      // Direct pricePointId format - update each territory
-      const updates: Promise<void>[] = [];
-
+      // Price point IDs already resolved (the review step). Write them as one
+      // price schedule, the same way calculated prices are written, rather
+      // than one request per territory.
+      const resolved: Array<{ territoryId: string; pricePointId: string }> = [];
       for (const [territoryCode, priceData] of Object.entries(prices)) {
         if ('pricePointId' in priceData) {
-          updates.push(
-            updateInAppPurchasePrice(
-              auth.credentials,
-              product.id,
-              priceData.pricePointId,
-              territoryCode,
-              priceData.startDate
-            )
-          );
+          resolved.push({ territoryId: territoryCode, pricePointId: priceData.pricePointId });
         }
       }
 
-      await Promise.all(updates);
-      updatedCount = updates.length;
+      const baseTerritory = product.baseTerritory || 'USA';
+      if (!resolved.some((p) => p.territoryId === baseTerritory)) {
+        return NextResponse.json(
+          { error: `${baseTerritory} price required. Apple uses ${baseTerritory} as the base territory.` },
+          { status: 400 }
+        );
+      }
+
+      await updateInAppPurchasePrices(auth.credentials, product.id, resolved, baseTerritory);
+      updatedCount = resolved.length;
     }
 
     // Fetch updated product

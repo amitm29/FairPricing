@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { pricingDraftKey } from '@/components/pricing/draft-key';
 
 import { StrategyPicker } from '@/components/pricing/strategy-picker';
+import { ResolvedPricesReview, type ResolvedPriceRow } from '@/components/pricing/resolved-prices-review';
 import { RegionFilterBar } from '@/components/pricing/region-filter-bar';
 import { AdvancedPricingControls, usePricingOptions, pricingOptionsError, useRegionalOverrides, RegionalOverride, calculateConnectedPrices, useSavedPricingSetting } from '@/components/pricing/advanced-controls';
 
@@ -66,7 +67,7 @@ import {
   type DynamicPPPData,
   type DynamicExchangeRates,
 } from '@/lib/google-play/currency';
-import { useUpdateProductPrices } from '@/hooks/use-products';
+import { useUpdateProductPrices, useResolveAppleProductPricePoints } from '@/hooks/use-products';
 
 // Re-exported from shared util for backwards compatibility within this module.
 const getCurrencySymbol = sharedGetCurrencySymbol;
@@ -236,6 +237,13 @@ export function BulkPricingModal({
   const [exchangeRatesFetched, setExchangeRatesFetched] = useState(false);
 
   const updateMutation = useUpdateProductPrices(platform);
+  const resolveMutation = useResolveAppleProductPricePoints();
+  const [review, setReview] = useState<{
+    rows: ResolvedPriceRow[];
+    resolved: Record<string, { pricePointId: string; tierPrice: number }>;
+    skipped: { code: string; name: string }[];
+    unchangedCount: number;
+  } | null>(null);
   const [isApplying, setIsApplying] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [hasInitializedSelection, setHasInitializedSelection] = useState(false);
@@ -611,7 +619,15 @@ export function BulkPricingModal({
   };
 
   // Apply bulk pricing
-  const handleApplyClick = () => {
+  // For Apple in-app purchases, Apply first asks App Store Connect what it
+  // would actually charge in every selected territory (read-only, streamed
+  // progress) and shows that for review; nothing is written until Confirm.
+  // Google Play has no price ladder to resolve against, and the app's own
+  // price (which arrives with a custom onSave) uses Apple's separate app price
+  // points, so both keep the summary dialog.
+  const reviewsAgainstAppStore = platform === 'apple' && !onSave;
+
+  const handleApplyClick = async () => {
     if (selectedRegions.size === 0) {
       toast.error('Please select at least one region');
       return;
@@ -619,6 +635,51 @@ export function BulkPricingModal({
 
     if (previewPrices.length === 0) {
       toast.error('Please enter a valid base price');
+      return;
+    }
+
+    if (reviewsAgainstAppStore) {
+      const appleBaseRegion = baseRegion;
+      const chosen = previewPrices.filter(
+        (calculated) => selectedRegions.has(calculated.regionCode) || calculated.regionCode === appleBaseRegion
+      );
+      const territories: Record<string, { targetPrice: number; currency: string; maxPrice?: number }> = {};
+      for (const calculated of chosen) {
+        const target = moneyToNumber(calculated.price);
+        territories[calculated.regionCode] = {
+          targetPrice: target,
+          currency: calculated.currencyCode,
+          ...(pricingOptions.capAtBase ? { maxPrice: target } : {}),
+        };
+      }
+      try {
+        const { resolved, skipped } = await resolveMutation.mutateAsync({ sku: product.sku, territories });
+        if (Object.keys(resolved).length === 0) {
+          toast.error('Failed to resolve any prices to Apple price points');
+          return;
+        }
+        const byCode = new Map(chosen.map((c) => [c.regionCode, c]));
+        const rows: ResolvedPriceRow[] = Object.entries(resolved).map(([code, r]) => {
+          const calculated = byCode.get(code)!;
+          const current = getCurrentPrice(code);
+          return {
+            code,
+            name: allRegions.find((region) => region.code === code)?.name ?? code,
+            currency: calculated.currencyCode,
+            current: current ? moneyToNumber(current) : null,
+            previewed: moneyToNumber(calculated.price),
+            resolved: r.tierPrice,
+          };
+        });
+        setReview({
+          rows,
+          resolved,
+          skipped: skipped.map((code) => ({ code, name: allRegions.find((region) => region.code === code)?.name ?? code })),
+          unchangedCount: allRegions.length - rows.length - skipped.length,
+        });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to resolve price points');
+      }
       return;
     }
 
@@ -635,6 +696,8 @@ export function BulkPricingModal({
       price: string;
     }> = [];
 
+    // Apple in-app purchases returned above after resolving; this path is
+    // Google Play and the Apple app price, which still needs its base territory.
     const appleBaseRegion = platform === 'apple' ? baseRegion : null;
 
     allRegions.forEach(region => {
@@ -662,6 +725,28 @@ export function BulkPricingModal({
 
     setUpdateSummary({ changing, staying });
     setShowConfirmDialog(true);
+  };
+
+  const confirmApply = async () => {
+    if (!review) return;
+    setIsApplying(true);
+    try {
+      const prices: Record<string, { pricePointId: string }> = {};
+      for (const [code, { pricePointId }] of Object.entries(review.resolved)) prices[code] = { pricePointId };
+      const result = await updateMutation.mutateAsync({ sku: product.sku, prices });
+      const skipped = (result?.skipped as string[] | undefined) ?? [];
+      const applied = review.rows.length;
+      if (skipped.length > 0) {
+        toast.warning(`${skipped.length} territories could not be updated`, { description: skipped.slice(0, 3).join(', ') + (skipped.length > 3 ? '…' : '') });
+      }
+      toast.success(`Updated prices for ${applied} territories`);
+      setReview(null);
+      onOpenChange(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update prices');
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   const executeApply = async () => {
@@ -1117,20 +1202,39 @@ export function BulkPricingModal({
           </Button>
           <Button
             onClick={handleApplyClick}
-            disabled={previewPrices.length === 0 || isApplying}
+            disabled={previewPrices.length === 0 || isApplying || resolveMutation.isPending}
           >
-            {isApplying ? (
+            {resolveMutation.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Applying prices...
+                {resolveMutation.progress
+                  ? `Resolving price points ${resolveMutation.progress.completed} of ${resolveMutation.progress.total}…`
+                  : 'Resolving price points…'}
               </>
+            ) : isApplying ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Applying prices…
+              </>
+            ) : reviewsAgainstAppStore ? (
+              `Review ${selectedRegions.size} resolved prices`
             ) : (
               `Apply to ${selectedRegions.size} Regions`
             )}
           </Button>
         </DialogFooter>
 
-        {/* Confirmation Dialog */}
+        <ResolvedPricesReview
+          open={review !== null}
+          onOpenChange={(next) => { if (!next) setReview(null); }}
+          rows={review?.rows ?? []}
+          skipped={review?.skipped ?? []}
+          unchangedCount={review?.unchangedCount ?? 0}
+          isApplying={isApplying}
+          onConfirm={confirmApply}
+        />
+
+        {/* Confirmation Dialog (Google Play) */}
         <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
           <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
             <DialogHeader className="flex-shrink-0 text-left">
