@@ -106,6 +106,31 @@ function applyRounding(
   return charmPrice(price, mode === 'nearest-tier' ? 'nearest-99' : mode, currencyCode);
 }
 
+/**
+ * Keep a rounded price inside [floor, ceiling] without losing its ending.
+ *
+ * A bare clamp would return the floor itself — 2717.16 for Kenya at a 0.35
+ * minimum — which is exactly the unrounded number the ending was meant to
+ * hide. Instead, when a bound wins, look for the nearest rung of the same
+ * rounding that sits on the inside of that bound (2799, not 2699). Only if the
+ * bounds are tighter than one rounding step does the bare bound come back.
+ */
+function boundWithEnding(price: number, floor: number, ceiling: number, round: (value: number) => number): number {
+  const EPS = 1e-9;
+  const inside = (value: number) => value >= floor - EPS && value <= ceiling + EPS;
+  if (inside(price)) return price;
+  // Probe from the bound toward the interior at geometrically growing offsets,
+  // so cent-level rungs (2717.99) and magnitude rungs (2799) are both found
+  // at their nearest. The first probe whose nearest rung lands inside wins.
+  const from = price < floor ? floor : ceiling;
+  const direction = price < floor ? 1 : -1;
+  for (const offset of [0, 1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 0.1, 0.2]) {
+    const candidate = round(from * (1 + direction * offset));
+    if (inside(candidate)) return candidate;
+  }
+  return Math.min(ceiling, Math.max(price, floor));
+}
+
 export interface CalculatedPrice {
   regionCode: string;
   currencyCode: string;
@@ -343,9 +368,10 @@ export function calculateRegionalPrice(
   const tiersForCurrency = getTiersForCurrency?.(currencyCode);
   const smartEndings: Partial<Record<RoundingMode, CharmEnding>> = {'nearest-99':'.99','nearest-95':'.95','whole':'.00','nearest-x9':'nine','round-up':'.99'};
   const smartEnding = smartEndings[rounding];
-  calculatedPrice = options.smartLocalEndings && smartEnding
-    ? applyCharm(calculatedPrice, alpha2Code, currencyCode, {ending: smartEnding, smartLocaleDefaults: true}).price
-    : applyRounding(calculatedPrice, rounding, currencyCode, tiersForCurrency);
+  const roundToEnding = (value: number) => options.smartLocalEndings && smartEnding
+    ? applyCharm(value, alpha2Code, currencyCode, {ending: smartEnding, smartLocaleDefaults: true}).price
+    : applyRounding(value, rounding, currencyCode, tiersForCurrency);
+  calculatedPrice = roundToEnding(calculatedPrice);
 
   // Enforce minimum price (minPrice is in local currency, convert if billing currency differs)
   // Get the local currency to check if minPrice needs conversion
@@ -362,7 +388,7 @@ export function calculateRegionalPrice(
   const floor = Math.max(adjustedMinPrice, baseUsdPrice * exchangeRate * (options.minRatio ?? 0));
   const ceiling = baseUsdPrice * exchangeRate * Math.min(options.maxRatio ?? Infinity, options.capAtBase ? 1 : Infinity);
   if (floor > ceiling) throw new Error('Price bounds conflict with the regional minimum.');
-  calculatedPrice = Math.min(ceiling, Math.max(calculatedPrice, floor));
+  calculatedPrice = boundWithEnding(calculatedPrice, floor, ceiling, roundToEnding);
   const shouldSnap = options.snapToTiers || rounding === 'nearest-tier';
   if (shouldSnap && tiersForCurrency?.length) {
     const valid = tiersForCurrency.filter(t => t.price >= floor && t.price <= ceiling && t.price > 0);
