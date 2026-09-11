@@ -736,7 +736,7 @@ export function AppleSubscriptionBulkPricingModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="sm:max-w-7xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
@@ -940,7 +940,7 @@ export function AppleSubscriptionBulkPricingModal({
                 <div className="border rounded-lg">
                   <div>
                     <TooltipProvider delayDuration={100}>
-                    <Table containerClassName="overflow-visible">
+                    <Table containerClassName="overflow-visible" className="[&_td]:px-2 [&_th]:px-2">
                       <TableHeader className="sticky top-0 z-10 bg-background shadow-[inset_0_-1px_0_var(--border)]">
                         <TableRow>
                           <TableHead className="w-12">
