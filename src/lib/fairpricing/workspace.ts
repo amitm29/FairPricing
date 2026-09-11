@@ -33,7 +33,7 @@ const productSchema = z.object({
 }).refine(v => v.minRatio <= v.maxRatio, 'Minimum must not exceed maximum.');
 export type ProductDraft = z.infer<typeof productSchema>;
 export type CountryOverride = z.infer<typeof overrideSchema>;
-export interface PriceRow { code: string; name: string; currency: string; price: number; calculated: number; fxPrice: number; baseEquivalent: number; change: number; source: string; isOverride: boolean; rounding: RoundingMode; error?: string; }
+export interface PriceRow { code: string; name: string; currency: string; price: number; calculated: number; fxPrice: number; baseEquivalent: number; change: number; source: string; isOverride: boolean; rounding: RoundingMode; /** The index's own multiplier, before price bounds are applied. */ multiplier: number; error?: string; }
 
 export function createProduct(name: string, kind: ProductDraft['kind']): ProductDraft {
   return {id: crypto.randomUUID(), name, kind, basePrice: 9.99, baseRegion: 'US', strategy: 'ppp', rounding: 'nearest-99', platform: 'google', weights: {...DEFAULT_BLEND}, minRatio: 0.1, maxRatio: 2, overrides: {}, updatedAt: new Date().toISOString()};
@@ -70,10 +70,11 @@ export function calculateRows(product: ProductDraft): PriceRow[] {
     const override = product.overrides[region.code];
     const rounding = override?.rounding ?? product.rounding;
     const fxPrice = product.basePrice / baseRate * FALLBACK_EXCHANGE_RATES[region.currency];
-    const row: PriceRow = {...region, rounding, price: 0, calculated: 0, fxPrice, baseEquivalent: 0, change: 0, source: sourceLabel(product.strategy, region.code, product.baseRegion), isOverride: override?.price !== undefined};
+    const row: PriceRow = {...region, rounding, price: 0, calculated: 0, fxPrice, baseEquivalent: 0, change: 0, multiplier: 1, source: sourceLabel(product.strategy, region.code, product.baseRegion), isOverride: override?.price !== undefined};
     try {
       const calculated = calculateRegionalPrice(product.basePrice, region.code, product.strategy, rounding, undefined, undefined, {[region.code]: region.currency}, undefined, base, product.baseRegion, product.platform === 'apple' ? currency => CURRENCY_PRICE_TIERS[currency] : undefined, {capAtBase: product.capAtBase, smartLocalEndings: product.smartLocalEndings, weights: product.weights as BlendWeights, minRatio: product.minRatio, maxRatio: product.maxRatio, snapToTiers: product.platform === 'apple'});
       row.calculated = calculated.rawPrice;
+      row.multiplier = calculated.multiplier;
       row.price = override?.price ?? row.calculated;
       if (override?.price !== undefined) {
         const digits = currencyDigits(region.currency);

@@ -25,6 +25,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -79,6 +80,14 @@
   --sidebar-accent-foreground: oklch(0.25 0.03 260);
   --sidebar-border: oklch(0.92 0.005 260);
   --sidebar-ring: oklch(0.52 0.095 174);
+  /* Diverging pair for price-vs-FX polarity. Cool = below the FX baseline,
+     warm = above it, neutral ink at the midpoint. Validated for CVD separation
+     and contrast against the card surface in both themes. */
+  --fp-discount: oklch(0.52 0.105 174);
+  --fp-premium: oklch(0.64 0.14 60);
+  /* Status: warnings only. Kept yellower than --fp-premium so a caution icon
+     never reads as "priced above FX". */
+  --warning: oklch(0.62 0.15 78);
 }
 
 .dark {
@@ -113,6 +122,9 @@
   --sidebar-accent-foreground: oklch(0.95 0.01 260);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.65 0.18 260);
+  --fp-discount: oklch(0.64 0.12 174);
+  --fp-premium: oklch(0.66 0.13 65);
+  --warning: oklch(0.8 0.14 82);
 }
 
 @layer base {
@@ -129,3 +141,25 @@
   cursor: pointer;
 }
 :where(button, input, select):disabled, [aria-disabled="true"], [data-disabled] { cursor: not-allowed; }
+
+/* Diverging cell tint for a price measured against straight FX conversion.
+   Stepped rather than continuous so the eye can bin it, and applied to the cell
+   background only: the price and its delta stay in ink tokens, never in the
+   encoding colour. Level 0 is the neutral midpoint and paints nothing. */
+.fp-delta-0 { background: transparent; }
+.fp-delta-down-1 { background: color-mix(in oklab, var(--fp-discount) 8%, transparent); }
+.fp-delta-down-2 { background: color-mix(in oklab, var(--fp-discount) 16%, transparent); }
+.fp-delta-down-3 { background: color-mix(in oklab, var(--fp-discount) 26%, transparent); }
+.fp-delta-up-1 { background: color-mix(in oklab, var(--fp-premium) 9%, transparent); }
+.fp-delta-up-2 { background: color-mix(in oklab, var(--fp-premium) 18%, transparent); }
+.fp-delta-up-3 { background: color-mix(in oklab, var(--fp-premium) 28%, transparent); }
+.dark .fp-delta-down-1 { background: color-mix(in oklab, var(--fp-discount) 12%, transparent); }
+.dark .fp-delta-down-2 { background: color-mix(in oklab, var(--fp-discount) 22%, transparent); }
+.dark .fp-delta-down-3 { background: color-mix(in oklab, var(--fp-discount) 34%, transparent); }
+.dark .fp-delta-up-1 { background: color-mix(in oklab, var(--fp-premium) 12%, transparent); }
+.dark .fp-delta-up-2 { background: color-mix(in oklab, var(--fp-premium) 22%, transparent); }
+.dark .fp-delta-up-3 { background: color-mix(in oklab, var(--fp-premium) 34%, transparent); }
+
+/* Swatches for the legend and the spread column, where the colour IS the mark. */
+.fp-swatch-down { background: var(--fp-discount); }
+.fp-swatch-up { background: var(--fp-premium); }

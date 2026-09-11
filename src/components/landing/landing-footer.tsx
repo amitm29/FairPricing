@@ -28,7 +28,7 @@ export function LandingFooter() {
 
           <div className="flex flex-col items-center md:items-end gap-2"><Link href="/about" className="text-sm underline">Source, data & privacy</Link>
             <Button variant="outline" size="sm" asChild>
-              <Link href="/#calculator">Pricing calculator</Link>
+              <Link href="/compare">Compare indexes</Link>
             </Button>
           </div>
         </div>

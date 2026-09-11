@@ -18,6 +18,12 @@ export function LandingNav() {
 
         <nav className="flex items-center gap-4"><ThemeToggle/>
           <Link
+            href="/compare"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Compare indexes
+          </Link>
+          <Link
             href="/#faq"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
