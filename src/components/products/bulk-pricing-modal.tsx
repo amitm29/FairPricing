@@ -733,7 +733,7 @@ export function BulkPricingModal({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0 pr-4">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-4">
         <div className="space-y-6 py-4">
           {/* Base Region + Price */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1080,7 +1080,7 @@ export function BulkPricingModal({
             </div>
           </div>
         </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="flex-shrink-0 border-t pt-4 gap-2 sm:gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
