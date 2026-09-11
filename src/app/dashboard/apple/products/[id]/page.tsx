@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Package } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -111,22 +111,23 @@ export default function AppleProductDetailPage({
       />
 
       <div className="flex-1 p-6 space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/dashboard/apple/products">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div className="flex-1">
-            {isLoading ? (
-              <Skeleton className="h-8 w-64" />
-            ) : (
-              <>
-                <h1 className="text-2xl font-bold">{getProductTitle()}</h1>
-                <p className="text-muted-foreground font-mono">{decodedId}</p>
-              </>
-            )}
-          </div>
+        <div>
+          <Link
+            href="/dashboard/apple/products"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Products
+          </Link>
+          {isLoading ? (
+            <Skeleton className="mt-4 h-8 w-64" />
+          ) : (
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-medium text-primary">App Store · Product</p>
+              <h1 className="text-2xl font-semibold tracking-tight">{getProductTitle()}</h1>
+              <p className="mt-1 font-mono text-sm text-muted-foreground">{decodedId}</p>
+            </div>
+          )}
         </div>
 
         {isLoading ? (
@@ -142,25 +143,22 @@ export default function AppleProductDetailPage({
           <>
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  Product Details
-                </CardTitle>
+                <CardTitle className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Product Details</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Status</p>
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Status</p>
                     <Badge
-                      variant={product.status === 'active' ? 'default' : 'secondary'}
+                      variant={product.status === 'active' ? 'tint' : 'secondary'}
                       className="mt-1"
                     >
                       {formatAppleStatus(appleProduct?.state)}
                     </Badge>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Type</p>
-                    <p className="font-medium mt-1">
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Type</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums">
                       {formatAppleProductType(product.purchaseType)}
                     </p>
                   </div>
@@ -173,8 +171,8 @@ export default function AppleProductDetailPage({
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Territories</p>
-                    <p className="font-medium mt-1">
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Territories</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums">
                       {Object.keys(product.prices || {}).length} territories
                     </p>
                   </div>

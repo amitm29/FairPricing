@@ -4,10 +4,11 @@ import { PriceMapPreview } from '@/components/pricing/world-map';
 import { useAuthStore } from '@/store/auth-store';
 import { pricingDraftKey } from '@/components/pricing/draft-key';
 
+import { StrategyPicker } from '@/components/pricing/strategy-picker';
 import { AdvancedPricingControls, usePricingOptions, pricingOptionsError, useRegionalOverrides, RegionalOverride, calculateConnectedPrices, useSavedPricingSetting } from '@/components/pricing/advanced-controls';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Calculator, Globe, DollarSign, TrendingDown, Sliders, RefreshCw, Hamburger, Tv, AlertTriangle, Loader2, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { Calculator, DollarSign, AlertTriangle, Loader2, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -709,8 +710,10 @@ export function AppleSubscriptionBulkPricingModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            <Calculator className="h-5 w-5" />
+          <DialogTitle className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+              <Calculator className="h-5 w-5 text-primary" />
+            </span>
             Bulk Edit Regional Prices
           </DialogTitle>
           <DialogDescription>
@@ -826,145 +829,15 @@ export function AppleSubscriptionBulkPricingModal({
               )}
             </div>
 
-            {/* Pricing Strategy */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>Pricing Strategy</Label>
-                {(pppLoading || exchangeRatesLoading) && (
-                  <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />
-                )}
-              </div>
-              <TooltipProvider delayDuration={200}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <label className="flex items-center gap-2 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-                        <input
-                          type="radio"
-                          name="strategy"
-                          value="direct"
-                          checked={strategy === 'direct'}
-                          onChange={() => setStrategy('direct')}
-                          className="sr-only"
-                        />
-                        <Globe className="h-4 w-4 shrink-0" />
-                        <span className="text-sm font-medium truncate">Direct</span>
-                      </label>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs">
-                      <p className="font-medium">Direct Conversion</p>
-                      <p className="text-xs text-muted-foreground">
-                        Same USD value in all regions (converted to local currency)
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <label className="flex items-center gap-2 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-                        <input
-                          type="radio"
-                          name="strategy"
-                          value="netflix"
-                          checked={strategy === 'netflix'}
-                          onChange={() => setStrategy('netflix')}
-                          className="sr-only"
-                        />
-                        <Tv className="h-4 w-4 shrink-0" />
-                        <span className="text-sm font-medium truncate">Netflix</span>
-                      </label>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs">
-                      <p className="font-medium">Netflix Index</p>
-                      <p className="text-xs text-muted-foreground">
-                        Prices based on Netflix Standard ad-free subscription prices by country.
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Data: tompec/netflix-prices (CC-BY-4.0)
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <label className="flex items-center gap-2 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-                        <input
-                          type="radio"
-                          name="strategy"
-                          value="ppp"
-                          checked={strategy === 'ppp'}
-                          onChange={() => setStrategy('ppp')}
-                          className="sr-only"
-                        />
-                        <TrendingDown className="h-4 w-4 shrink-0" />
-                        <span className="text-sm font-medium truncate">PPP (World Bank)</span>
-                      </label>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs">
-                      <p className="font-medium">PPP-Adjusted (Recommended)</p>
-                      <p className="text-xs text-muted-foreground">
-                        Lower prices for lower-income regions based on World Bank purchasing power parity data.
-                        Hyperinflation regions automatically receive reduced prices for affordability.
-                      </p>
-                      {pppMetadata && pppMetadata.worldBankRegions > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Data: World Bank ({pppMetadata.baseYear}) &bull; {pppMetadata.worldBankRegions} regions
-                        </p>
-                      )}
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <label className="flex items-center gap-2 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-                        <input
-                          type="radio"
-                          name="strategy"
-                          value="bigmac"
-                          checked={strategy === 'bigmac'}
-                          onChange={() => setStrategy('bigmac')}
-                          className="sr-only"
-                        />
-                        <Hamburger className="h-4 w-4 shrink-0" />
-                        <span className="text-sm font-medium truncate">Big Mac</span>
-                      </label>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs">
-                      <p className="font-medium">Big Mac Index</p>
-                      <p className="text-xs text-muted-foreground">
-                        Prices based on The Economist&apos;s Big Mac Index - a real-world measure of purchasing power.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <label className="flex items-center gap-2 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-                        <input
-                          type="radio"
-                          name="strategy"
-                          value="custom"
-                          checked={strategy === 'custom'}
-                          onChange={() => setStrategy('custom')}
-                          className="sr-only"
-                        />
-                        <Sliders className="h-4 w-4 shrink-0" />
-                        <span className="text-sm font-medium truncate">Custom</span>
-                      </label>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs">
-                      <p className="font-medium">Custom Multipliers</p>
-                      <p className="text-xs text-muted-foreground">
-                        Define your own regional price multipliers (coming soon).
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </TooltipProvider>
-            </div>
+            <StrategyPicker
+            strategy={strategy}
+            onChange={setStrategy}
+            loading={pppLoading || exchangeRatesLoading}
+            sourceOverrides={{ ppp: pppMetadata && pppMetadata.worldBankRegions > 0 ? `World Bank (${pppMetadata.baseYear}) · ${pppMetadata.worldBankRegions} regions` : undefined }}
+          />
 
             <p className="text-xs text-muted-foreground">Strategy settings and manual country overrides are saved on this device and remain until you select Reset.</p>
-          <AdvancedPricingControls strategy={strategy} setStrategy={setStrategy} rounding={rounding} setRounding={setRounding} options={pricingOptions} setOptions={setPricingOptions} apple={true} /><PriceMapPreview rows={previewPrices.map(r=>({code:r.territoryCode,name:r.countryName,currency:r.currency,price:r.tierPrice,ratio:r.multiplier}))}/>
+          <AdvancedPricingControls strategy={strategy} rounding={rounding} setRounding={setRounding} options={pricingOptions} setOptions={setPricingOptions} apple={true} /><PriceMapPreview rows={previewPrices.map(r=>({code:r.territoryCode,name:r.countryName,currency:r.currency,price:r.tierPrice,ratio:r.multiplier}))}/>
 
           {/* Preserve Existing Subscriber Prices */}
             <div className="space-y-3">
@@ -984,11 +857,11 @@ export function AppleSubscriptionBulkPricingModal({
           {/* Preview Table */}
             {previewPrices.length > 0 && (
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-col">
                     <Label>Regions & Preview ({selectedRegions.size} selected)</Label>
                     {warningCount > 0 && (
-                      <div className="flex items-center gap-1 text-amber-600 dark:text-amber-500 mt-1">
+                      <div className="mt-1 flex items-center gap-1 text-warning">
                         <AlertTriangle className="h-3 w-3" />
                         <span className="text-[10px]">{warningCount} regions with issues</span>
                       </div>
@@ -1032,10 +905,10 @@ export function AppleSubscriptionBulkPricingModal({
                   </div>
                 </div>
                 <div className="border rounded-lg">
-                  <ScrollArea className="h-72">
+                  <div>
                     <TooltipProvider delayDuration={100}>
-                    <Table>
-                      <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
+                    <Table containerClassName="overflow-visible">
+                      <TableHeader className="sticky top-0 z-10 bg-background shadow-[inset_0_-1px_0_var(--border)]">
                         <TableRow>
                           <TableHead className="w-12">
                             <Checkbox
@@ -1085,7 +958,7 @@ export function AppleSubscriptionBulkPricingModal({
                         {sortedPreviewPrices.map((preview) => {
                           const isSelected = selectedRegions.has(preview.territoryCode);
                           const rowClassName = preview.noTierData
-                            ? 'bg-red-50/50 dark:bg-red-950/20'
+                            ? 'bg-destructive/5'
                             : !isSelected ? 'opacity-50' : '';
 
                           return (
@@ -1111,15 +984,7 @@ export function AppleSubscriptionBulkPricingModal({
                               <TableCell className="text-right text-sm">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <span className={
-                                      preview.multiplier < 1
-                                        ? 'text-green-600 cursor-help'
-                                        : preview.multiplier > 1
-                                        ? 'text-orange-600 cursor-help'
-                                        : 'text-muted-foreground cursor-help'
-                                    }>
-                                      {preview.multiplier.toFixed(2)}×
-                                    </span>
+                                    <span className="cursor-help tabular-nums">{preview.multiplier < 0.995 ? <span aria-hidden="true" className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle fp-swatch-down" /> : preview.multiplier > 1.005 ? <span aria-hidden="true" className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle fp-swatch-up" /> : null}{preview.multiplier.toFixed(2)}×</span>
                                   </TooltipTrigger>
                                   <TooltipContent side="top">
                                     <p className="text-xs">
@@ -1144,9 +1009,8 @@ export function AppleSubscriptionBulkPricingModal({
                                   : '-'}
                               </TableCell>
                               <TableCell className="text-right font-medium">
-                              <RegionalOverride region={preview.territoryCode} value={overrides[preview.territoryCode]} onChange={updateOverride} />
                                 {preview.noTierData ? (
-                                  <span className="text-red-600">No tier data</span>
+                                  <span className="text-destructive">No tier data</span>
                                 ) : (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -1173,22 +1037,13 @@ export function AppleSubscriptionBulkPricingModal({
                                     </TooltipContent>
                                   </Tooltip>
                                 )}
+                                <RegionalOverride region={preview.territoryCode} value={overrides[preview.territoryCode]} computed={preview.tierPrice} onChange={updateOverride} />
                               </TableCell>
                               <TableCell className="text-right">
                                 {preview.priceChange !== null ? (
-                                  <span
-                                    className={
-                                      preview.priceChange > 0
-                                        ? 'text-red-600'
-                                        : preview.priceChange < 0
-                                        ? 'text-green-600'
-                                        : 'text-muted-foreground'
-                                    }
-                                  >
-                                    {formatPriceChange(preview.priceChange)}
-                                  </span>
+                                  <span className="tabular-nums">{preview.priceChange > 0.5 ? <span aria-hidden="true" className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle fp-swatch-up" /> : preview.priceChange < -0.5 ? <span aria-hidden="true" className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle fp-swatch-down" /> : null}{formatPriceChange(preview.priceChange)}</span>
                                 ) : (
-                                  <span className="text-green-600">New</span>
+                                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">New</span>
                                 )}
                               </TableCell>
                             </TableRow>
@@ -1197,7 +1052,7 @@ export function AppleSubscriptionBulkPricingModal({
                       </TableBody>
                     </Table>
                     </TooltipProvider>
-                  </ScrollArea>
+                  </div>
                 </div>
               </div>
             )}
@@ -1250,7 +1105,7 @@ export function AppleSubscriptionBulkPricingModal({
                   {/* Section: Changing */}
                   <div>
                     <h4 className="font-semibold text-sm mb-2 text-primary flex items-center gap-2 sticky top-0 bg-background py-1 z-10">
-                      <span className="w-2 h-2 rounded-full bg-blue-500" />
+                      <span className="h-2 w-2 rounded-full bg-primary" />
                       Updating ({updateSummary?.changing.length})
                     </h4>
                     <div className="grid grid-cols-1 gap-1 pl-4">
@@ -1260,7 +1115,7 @@ export function AppleSubscriptionBulkPricingModal({
                           <span className="font-mono">
                             <span className="text-muted-foreground line-through">{item.old}</span>
                             <span className="mx-2 text-muted-foreground">→</span>
-                            <span className="font-bold text-blue-600 dark:text-blue-400">{item.new}</span>
+                            <span className="font-semibold text-primary">{item.new}</span>
                           </span>
                         </div>
                       ))}

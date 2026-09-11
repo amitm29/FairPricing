@@ -178,15 +178,15 @@ export function BulkUpdateModal({
                     key={`${result.id}-${result.basePlanId || index}`}
                     className={`p-3 rounded-lg border ${
                       result.success
-                        ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900'
-                        : 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-900'
+                        ? 'border-primary/30 bg-primary/10'
+                        : 'border-destructive/30 bg-destructive/10'
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-2">
                       {result.success ? (
-                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        <CheckCircle2 className="h-4 w-4 text-primary" />
                       ) : (
-                        <XCircle className="h-4 w-4 text-red-600" />
+                        <XCircle className="h-4 w-4 text-destructive" />
                       )}
                       <span className="font-mono text-sm">{result.id}</span>
                       {result.basePlanId && (
@@ -196,7 +196,7 @@ export function BulkUpdateModal({
                       )}
                     </div>
                     {result.error && (
-                      <p className="text-sm text-red-600">{result.error}</p>
+                      <p className="text-sm text-destructive">{result.error}</p>
                     )}
                     {result.changes && result.changes.length > 0 && (
                       <div className="mt-2 space-y-1">
@@ -209,7 +209,7 @@ export function BulkUpdateModal({
                             <span className="text-muted-foreground line-through">
                               {change.oldPrice}
                             </span>
-                            <span className="text-green-600">
+                            <span className="font-medium text-primary">
                               {change.newPrice}
                             </span>
                           </div>

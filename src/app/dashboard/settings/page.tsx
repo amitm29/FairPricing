@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Key, RefreshCw, Check, ExternalLink, Trash2 } from 'lucide-react';
+import { Header, PageHeader } from '@/components/layout';
+import { Key, RefreshCw, Check, ExternalLink, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -93,16 +94,14 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Settings className="h-6 w-6" />
-          Settings
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Configure your pricing tool settings
-        </p>
-      </div>
+    <div className="flex h-full flex-col">
+      <Header showSearch={false} />
+      <div className="flex-1 space-y-8 p-6">
+      <PageHeader
+        eyebrow="Workspace"
+        title="Settings"
+        description="Configure how prices are calculated and where reference data comes from."
+      />
 
       <Card>
         <CardHeader>
@@ -123,14 +122,14 @@ export default function SettingsPage() {
               Loading...
             </div>
           ) : status?.hasKey ? (
-            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-900">
+            <div className="flex items-center justify-between p-3 rounded-lg border border-primary/30 bg-primary/10">
               <div className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-green-600" />
+                <Check className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="font-medium text-green-800 dark:text-green-200">
+                  <p className="font-medium text-foreground">
                     API Key Configured
                   </p>
-                  <p className="text-sm text-green-600 dark:text-green-400">
+                  <p className="text-sm text-muted-foreground">
                     {status.apiKey}
                   </p>
                 </div>
@@ -152,11 +151,11 @@ export default function SettingsPage() {
               </div>
             </div>
           ) : (
-            <div className="p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-900">
-              <p className="font-medium text-amber-800 dark:text-amber-200">
+            <div className="rounded-lg border border-warning/30 bg-warning/10 p-3">
+              <p className="font-medium text-foreground">
                 No API Key Configured
               </p>
-              <p className="text-sm text-amber-600 dark:text-amber-400">
+              <p className="text-sm text-muted-foreground">
                 Using fallback exchange rates. Add an API key for real-time rates.
               </p>
             </div>
@@ -203,6 +202,7 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

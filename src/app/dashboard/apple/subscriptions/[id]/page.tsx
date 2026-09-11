@@ -2,7 +2,7 @@
 
 import { use, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CreditCard, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -125,24 +125,23 @@ export default function AppleSubscriptionDetailPage({
       />
 
       <div className="flex-1 p-6 space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/dashboard/apple/subscriptions">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div className="flex-1">
-            {isLoading ? (
-              <Skeleton className="h-8 w-64" />
-            ) : (
-              <>
-                <h1 className="text-2xl font-bold">{getSubscriptionTitle()}</h1>
-                <p className="text-muted-foreground font-mono">
-                  {subscription?.productId || decodedId}
-                </p>
-              </>
-            )}
-          </div>
+        <div>
+          <Link
+            href="/dashboard/apple/subscriptions"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Subscriptions
+          </Link>
+          {isLoading ? (
+            <Skeleton className="mt-4 h-8 w-64" />
+          ) : (
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-medium text-primary">App Store · Subscription</p>
+              <h1 className="text-2xl font-semibold tracking-tight">{getSubscriptionTitle()}</h1>
+              <p className="mt-1 font-mono text-sm text-muted-foreground">{subscription?.productId || decodedId}</p>
+            </div>
+          )}
         </div>
 
         {isLoading ? (
@@ -158,15 +157,12 @@ export default function AppleSubscriptionDetailPage({
           <>
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Subscription Details
-                </CardTitle>
+                <CardTitle className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Subscription Details</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Status</p>
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Status</p>
                     {(() => {
                       const status = formatAppleStatus(subscription.state);
                       return (
@@ -185,12 +181,12 @@ export default function AppleSubscriptionDetailPage({
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Base Price</p>
-                    <p className="font-medium mt-1">{getBasePrice()}</p>
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Base Price</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums">{getBasePrice()}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Regions</p>
-                    <p className="font-medium mt-1">{getTotalTerritories()}</p>
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Regions</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums">{getTotalTerritories()}</p>
                   </div>
                 </div>
 
@@ -204,7 +200,7 @@ export default function AppleSubscriptionDetailPage({
             </Card>
 
             <div>
-              <h2 className="text-lg font-semibold mb-4">Subscription Plan</h2>
+              <h2 className="mb-4 text-xs font-medium tracking-wide text-muted-foreground uppercase">Subscription Plan</h2>
               <AppleSubscriptionPricingEditor subscription={subscription} />
             </div>
           </>

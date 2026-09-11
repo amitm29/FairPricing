@@ -5,11 +5,14 @@ import { Button } from '@/components/ui/button';
 export function Footer() {
   return (
     <footer className="border-t bg-background">
-      <div className="container mx-auto px-4 py-6 flex items-center justify-between text-sm text-muted-foreground">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-6 text-sm text-muted-foreground">
         <span>&copy; {new Date().getFullYear()} FairPricing</span>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <Link href="/about" className="transition-colors hover:text-foreground">
+            Source, data &amp; privacy
+          </Link>
           <Button variant="outline" size="sm" asChild>
-            <Link href="/index-checker">Index Checker</Link>
+            <Link href="/compare">Compare indexes</Link>
           </Button>
           <a
             href="https://github.com/andyshephard/PricingKit"

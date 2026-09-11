@@ -228,10 +228,10 @@ export function PricingEditor({ product, onSave }: PricingEditorProps) {
   return (
     <div className="space-y-6">
       {pendingChanges.size > 0 && (
-        <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+        <Card className="border-warning/40 bg-warning/10">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-amber-500" />
+              <AlertCircle className="h-5 w-5 text-warning" />
               Pending Changes
             </CardTitle>
           </CardHeader>
@@ -256,12 +256,12 @@ export function PricingEditor({ product, onSave }: PricingEditorProps) {
                           <span className="text-muted-foreground line-through mr-2">
                             {formatMoney(change.oldPrice)}
                           </span>
-                          <span className="text-green-600">
+                          <span className="font-medium text-primary">
                             {formatMoney(change.newPrice)}
                           </span>
                         </>
                       ) : (
-                        <span className="text-green-600">
+                        <span className="font-medium text-primary">
                           + {formatMoney(change.newPrice)}
                         </span>
                       )}
@@ -315,7 +315,7 @@ export function PricingEditor({ product, onSave }: PricingEditorProps) {
         </div>
       </div>
 
-      <div className="rounded-md border">
+      <div className="overflow-hidden rounded-xl border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -335,7 +335,7 @@ export function PricingEditor({ product, onSave }: PricingEditorProps) {
               return (
                 <TableRow
                   key={regionCode}
-                  className={pendingChange ? 'bg-amber-50 dark:bg-amber-950/20' : ''}
+                  className={pendingChange ? 'bg-warning/10' : ''}
                 >
                   <TableCell>
                     <Badge variant="outline">{regionCode}</Badge>
@@ -370,7 +370,8 @@ export function PricingEditor({ product, onSave }: PricingEditorProps) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="text-destructive hover:text-destructive"
+                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        aria-label={`Remove ${regionCode}`}
                         onClick={() => setDeleteConfirm(regionCode)}
                       >
                         <Trash2 className="h-4 w-4" />

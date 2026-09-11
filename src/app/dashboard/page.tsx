@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import Image from 'next/image';
 import { useAuthStore } from '@/store/auth-store';
 
 // Platform icons as SVG components
@@ -55,67 +55,57 @@ export default function DashboardPage() {
 
   // Both platforms are authenticated - show the platform selector
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex h-14 items-center border-b px-6">
-        <span className="font-semibold">FairPricing</span>
+    <div className="flex h-full flex-col">
+      <div className="flex h-16 items-center border-b px-6">
+        <Link href="/" className="flex items-center gap-2 text-lg font-bold">
+          <Image src="/fairpricing.svg" alt="" width={26} height={26} />
+          FairPricing
+        </Link>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="max-w-2xl w-full space-y-6">
+      <div className="flex flex-1 items-center justify-center p-6">
+        <div className="w-full max-w-2xl space-y-8">
           <div className="text-center">
-            <h1 className="text-3xl font-bold">Select Platform</h1>
-            <p className="text-muted-foreground mt-2">
-              Choose which platform dashboard you&apos;d like to manage
+            <p className="mb-2 text-sm font-medium text-primary">Two stores connected</p>
+            <h1 className="text-3xl font-semibold tracking-tight">Which one are you pricing?</h1>
+            <p className="mt-3 leading-relaxed text-muted-foreground">
+              Products are kept separate per store. You can switch at any time from the sidebar.
             </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Link href="/dashboard/google">
-              <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <GooglePlayIcon className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">Google Play</CardTitle>
-                      <CardDescription className="font-mono text-xs">
-                        {packageName}
-                      </CardDescription>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Manage in-app products and subscriptions for the Google Play Store
-                  </p>
-                </CardContent>
-              </Card>
+            <Link
+              href="/dashboard/google"
+              className="group flex h-full flex-col rounded-xl border bg-card p-6 transition-colors hover:border-primary/40 hover:bg-muted/30"
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                  <GooglePlayIcon className="h-6 w-6 text-primary" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-medium">Google Play</h2>
+                  <p className="truncate font-mono text-xs text-muted-foreground">{packageName}</p>
+                </div>
+                <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              </div>
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">Manage in-app products and subscriptions for the Google Play Store</p>
             </Link>
 
-            <Link href="/dashboard/apple">
-              <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <AppleIcon className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">App Store</CardTitle>
-                      <CardDescription className="font-mono text-xs">
-                        {bundleId}
-                      </CardDescription>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Manage in-app purchases and subscriptions for the Apple App Store
-                  </p>
-                </CardContent>
-              </Card>
+            <Link
+              href="/dashboard/apple"
+              className="group flex h-full flex-col rounded-xl border bg-card p-6 transition-colors hover:border-primary/40 hover:bg-muted/30"
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                  <AppleIcon className="h-6 w-6 text-primary" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-medium">App Store</h2>
+                  <p className="truncate font-mono text-xs text-muted-foreground">{bundleId}</p>
+                </div>
+                <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              </div>
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">Manage in-app purchases and subscriptions for the Apple App Store</p>
             </Link>
           </div>
         </div>

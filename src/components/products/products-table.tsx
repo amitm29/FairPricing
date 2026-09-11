@@ -149,9 +149,13 @@ export function ProductsTable({
 
   if (isLoading) {
     return (
-      <div className="space-y-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
+      <div className="overflow-hidden rounded-xl border bg-card">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4 border-b p-4 last:border-b-0">
+            <Skeleton className="h-4 w-4 shrink-0 rounded" />
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="ml-auto h-4 w-20" />
+          </div>
         ))}
       </div>
     );
@@ -159,18 +163,15 @@ export function ProductsTable({
 
   if (sortedProducts.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">
-          {searchQuery
-            ? 'No products match your search'
-            : 'No products found'}
-        </p>
+      <div className="rounded-xl border border-dashed bg-card/40 px-6 py-16 text-center">
+        <p className="font-medium">{searchQuery ? 'No products match your search' : 'No products yet'}</p>
+        <p className="mt-1 text-sm text-muted-foreground">In-app products from the connected store appear here.</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-md border">
+    <div className="overflow-hidden rounded-xl border bg-card">
       <Table>
         <TableHeader>
           <TableRow>
@@ -187,7 +188,7 @@ export function ProductsTable({
             <TableHead>
               <Button
                 variant="ghost"
-                className="h-auto p-0 font-semibold hover:bg-transparent"
+                className="h-auto gap-1 p-0 text-xs font-medium tracking-wide text-muted-foreground uppercase hover:bg-transparent hover:text-foreground"
                 onClick={() => handleSort('sku')}
               >
                 SKU / Name
@@ -197,7 +198,7 @@ export function ProductsTable({
             <TableHead>
               <Button
                 variant="ghost"
-                className="h-auto p-0 font-semibold hover:bg-transparent"
+                className="h-auto gap-1 p-0 text-xs font-medium tracking-wide text-muted-foreground uppercase hover:bg-transparent hover:text-foreground"
                 onClick={() => handleSort('status')}
               >
                 Status
@@ -208,7 +209,7 @@ export function ProductsTable({
               <TableHead>
                 <Button
                   variant="ghost"
-                  className="h-auto p-0 font-semibold hover:bg-transparent"
+                  className="h-auto gap-1 p-0 text-xs font-medium tracking-wide text-muted-foreground uppercase hover:bg-transparent hover:text-foreground"
                   onClick={() => handleSort('price')}
                 >
                   Base Price{products[0]?.defaultPrice?.currencyCode ? ` (${products[0].defaultPrice.currencyCode})` : ''}
@@ -220,7 +221,7 @@ export function ProductsTable({
               <TableHead>
                 <Button
                   variant="ghost"
-                  className="h-auto p-0 font-semibold hover:bg-transparent"
+                  className="h-auto gap-1 p-0 text-xs font-medium tracking-wide text-muted-foreground uppercase hover:bg-transparent hover:text-foreground"
                   onClick={() => handleSort('regions')}
                 >
                   Regions
@@ -262,9 +263,10 @@ export function ProductsTable({
                 </TableCell>
                 <TableCell>
                   <Badge
-                    variant={product.status === 'active' ? 'default' : 'secondary'}
+                    variant={product.status === 'active' ? 'tint' : 'secondary'}
+                    className="capitalize"
                   >
-                    {product.status}
+                    {product.status?.toLowerCase()}
                   </Badge>
                 </TableCell>
                 <TableCell>

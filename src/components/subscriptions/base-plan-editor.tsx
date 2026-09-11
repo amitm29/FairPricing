@@ -43,6 +43,7 @@ import {
   GOOGLE_PLAY_REGIONS,
   parseMoney,
   moneyToNumber,
+  formatMoney,
 } from '@/lib/google-play/types';
 import {
   useUpdateBasePlanPrices,
@@ -190,7 +191,7 @@ function BasePlanPricingSection({
         </span>
       </label>
 
-      <div className="rounded-md border">
+      <div className="overflow-hidden rounded-xl border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -209,7 +210,7 @@ function BasePlanPricingSection({
               return (
                 <TableRow
                   key={regionCode}
-                  className={pendingChange ? 'bg-amber-50 dark:bg-amber-950/20' : ''}
+                  className={pendingChange ? 'bg-warning/10' : ''}
                 >
                   <TableCell>
                     <Badge variant="outline" className="text-xs">
@@ -249,7 +250,8 @@ function BasePlanPricingSection({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-destructive hover:text-destructive"
+                        className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        aria-label={`Remove ${regionCode}`}
                         onClick={() => setDeleteConfirm(regionCode)}
                       >
                         <Trash2 className="h-3 w-3" />
@@ -493,10 +495,10 @@ export function BasePlanEditor({ subscription }: BasePlanEditorProps) {
   return (
     <div className="space-y-6">
       {totalChanges > 0 && (
-        <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+        <Card className="border-warning/40 bg-warning/10">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-amber-500" />
+              <AlertCircle className="h-5 w-5 text-warning" />
               {totalChanges} Pending Changes
             </CardTitle>
           </CardHeader>
@@ -508,10 +510,19 @@ export function BasePlanEditor({ subscription }: BasePlanEditorProps) {
         </Card>
       )}
 
-      <Accordion type="multiple" className="space-y-4" defaultValue={subscription.basePlans.map(bp => bp.basePlanId)}>
+      {/* One plan opens by itself; several stay collapsed and open one at a time,
+          otherwise a subscription with a dozen plans becomes a very long page. */}
+      <Accordion
+        type="single"
+        collapsible
+        className="space-y-4"
+        defaultValue={subscription.basePlans.length === 1 ? subscription.basePlans[0].basePlanId : undefined}
+      >
         {subscription.basePlans.map((basePlan) => {
           const planChanges = allChanges.get(basePlan.basePlanId);
           const hasChanges = planChanges && planChanges.changes.size > 0;
+          const usPrice = basePlan.regionalConfigs?.find((config) => config.regionCode === 'US')?.price;
+          const regionCount = basePlan.regionalConfigs?.length ?? 0;
 
           return (
             <AccordionItem
@@ -520,14 +531,15 @@ export function BasePlanEditor({ subscription }: BasePlanEditorProps) {
               className="border rounded-lg px-4"
             >
               <AccordionTrigger className="hover:no-underline">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-1 items-center gap-3">
                   <Badge variant="outline" className="font-mono">
                     {basePlan.basePlanId}
                   </Badge>
                   <Badge
-                    variant={basePlan.state === 'active' ? 'default' : 'secondary'}
+                    variant={basePlan.state?.toLowerCase() === 'active' ? 'tint' : 'secondary'}
+                    className="capitalize"
                   >
-                    {basePlan.state}
+                    {basePlan.state?.toLowerCase()}
                   </Badge>
                   {basePlan.autoRenewingBasePlanType && (
                     <span className="text-sm text-muted-foreground">
@@ -540,10 +552,14 @@ export function BasePlanEditor({ subscription }: BasePlanEditorProps) {
                     </span>
                   )}
                   {hasChanges && (
-                    <Badge variant="outline" className="bg-amber-100 text-amber-800">
+                    <Badge variant="outline" className="border-warning/30 bg-warning/10 text-foreground">
                       {planChanges.changes.size} changes
                     </Badge>
                   )}
+                  <span className="ml-auto hidden items-center gap-3 pr-2 text-sm text-muted-foreground tabular-nums sm:flex">
+                    <span>{regionCount} {regionCount === 1 ? 'region' : 'regions'}</span>
+                    {usPrice && <span className="font-medium text-foreground">{formatMoney(usPrice)}</span>}
+                  </span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pt-4 pb-6">

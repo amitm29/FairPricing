@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Header } from '@/components/layout';
+import { Header, PageHeader } from '@/components/layout';
 import { PricingEditor } from '@/components/products/pricing-editor';
 import { formatMoney, parseMoney, type InAppProduct, type Money } from '@/lib/google-play/types';
 import type { AppleProductPrice } from '@/lib/apple-connect/types';
@@ -96,15 +96,12 @@ export default function AppleAppPricePage() {
         showSearch={false}
       />
 
-      <div className="flex-1 p-6 space-y-6">
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold">App Price</h1>
-            <p className="text-muted-foreground">
-              Manage your app&apos;s pricing across territories
-            </p>
-          </div>
-        </div>
+      <div className="flex-1 space-y-8 p-6">
+        <PageHeader
+          eyebrow="App Store"
+          title="App price"
+          description="Manage your app&apos;s pricing across territories."
+        />
 
         {isLoading ? (
           <div className="space-y-4">

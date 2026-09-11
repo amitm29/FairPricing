@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Header } from '@/components/layout';
+import { Header, PageHeader } from '@/components/layout';
 import { SubscriptionsTable } from '@/components/subscriptions/subscriptions-table';
 import { BulkUpdateModal } from '@/components/pricing/bulk-update-modal';
 import { Button } from '@/components/ui/button';
@@ -77,32 +77,22 @@ export default function AppleSubscriptionsPage() {
         onSearchChange={setSearchQuery}
       />
 
-      <div className="flex-1 p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Subscriptions</h1>
-            <p className="text-muted-foreground">
-              Manage subscription pricing across territories
-            </p>
-          </div>
+      <div className="flex-1 space-y-6 p-6">
+        <PageHeader eyebrow="App Store" title="Subscriptions" description="Manage subscription pricing across territories" />
 
-          {selectedSubscriptionIds.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                {selectedSubscriptionIds.length} selected
-              </span>
-              <Button onClick={() => setBulkModalOpen(true)}>
-                Bulk Update Prices
+        {selectedSubscriptionIds.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+            <span className="text-sm font-medium">{selectedSubscriptionIds.length} selected</span>
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setSelectedSubscriptions([])}>
+                Clear
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => setSelectedSubscriptions([])}
-              >
-                Clear Selection
+              <Button size="sm" onClick={() => setBulkModalOpen(true)}>
+                Bulk update prices
               </Button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <SubscriptionsTable
           subscriptions={subscriptions}

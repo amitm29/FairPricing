@@ -2,10 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { Package, CreditCard } from 'lucide-react';
-import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Header } from '@/components/layout';
+import { Header, PageHeader, StatCard } from '@/components/layout';
 import { useAuthStore } from '@/store/auth-store';
 
 interface StatsResponse {
@@ -17,41 +14,6 @@ interface StatsResponse {
     total: number;
     activePlans: number;
   };
-}
-
-function StatCard({
-  title,
-  value,
-  description,
-  icon: Icon,
-  href,
-  isLoading,
-}: {
-  title: string;
-  value: number | string;
-  description: string;
-  icon: React.ComponentType<{ className?: string }>;
-  href: string;
-  isLoading?: boolean;
-}) {
-  return (
-    <Link href={href}>
-      <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">{title}</CardTitle>
-          <Icon className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <Skeleton className="h-8 w-16" />
-          ) : (
-            <div className="text-2xl font-bold">{value}</div>
-          )}
-          <p className="text-xs text-muted-foreground">{description}</p>
-        </CardContent>
-      </Card>
-    </Link>
-  );
 }
 
 export default function GoogleDashboardPage() {
@@ -101,27 +63,30 @@ export default function GoogleDashboardPage() {
         showSearch={false}
       />
 
-      <div className="flex-1 p-6 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Google Play Dashboard</h1>
-          <p className="text-muted-foreground">
-            Overview for <span className="font-mono">{packageName}</span>
-          </p>
-        </div>
+      <div className="flex-1 space-y-8 p-6">
+        <PageHeader
+          eyebrow="Google Play"
+          title="Overview"
+          description={
+            <>
+              Products and subscriptions for <span className="font-mono text-foreground">{packageName}</span>.
+            </>
+          }
+        />
 
         <div className="grid gap-4 md:grid-cols-2">
           <StatCard
-            title="In-App Products"
+            label="In-app products"
             value={stats?.products.total ?? 0}
-            description={`${stats?.products.active ?? 0} active`}
+            detail={`${stats?.products.active ?? 0} active`}
             icon={Package}
             href="/dashboard/google/products"
             isLoading={isLoading}
           />
           <StatCard
-            title="Subscriptions"
+            label="Subscriptions"
             value={stats?.subscriptions.total ?? 0}
-            description={`${stats?.subscriptions.activePlans ?? 0} active base plans`}
+            detail={`${stats?.subscriptions.activePlans ?? 0} active base plans`}
             icon={CreditCard}
             href="/dashboard/google/subscriptions"
             isLoading={isLoading}

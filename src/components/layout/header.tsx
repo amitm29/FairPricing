@@ -43,10 +43,11 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-6">
-      <Breadcrumbs /><ThemeToggle/>
+    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-10 flex h-16 items-center gap-4 border-b px-6 backdrop-blur">
+      <Breadcrumbs />
 
-      <div className="ml-auto flex items-center gap-4">
+      <div className="ml-auto flex items-center gap-2">
+        <ThemeToggle />
         {showSearch && onSearchChange && (
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />

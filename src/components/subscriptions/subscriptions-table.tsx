@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import type { Subscription, BasePlan, Money } from '@/lib/google-play/types';
 import { formatMoney } from '@/lib/google-play/types';
 import { getSubscriptionDetailRoute, type Platform } from '@/lib/utils/platform-routes';
@@ -178,10 +179,10 @@ function BasePlanRow({ basePlan }: { basePlan: BasePlan }) {
           {basePlan.basePlanId}
         </Badge>
         <Badge
-          variant={basePlan.state?.toLowerCase() === 'active' ? 'default' : 'secondary'}
-          className="text-xs"
+          variant={basePlan.state?.toLowerCase() === 'active' ? 'tint' : 'secondary'}
+          className="text-xs capitalize"
         >
-          {basePlan.state}
+          {basePlan.state?.toLowerCase()}
         </Badge>
         {basePlan.autoRenewingBasePlanType && (
           <span className="text-xs text-muted-foreground">
@@ -313,9 +314,13 @@ export function SubscriptionsTable({
 
   if (isLoading) {
     return (
-      <div className="space-y-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
+      <div className="overflow-hidden rounded-xl border bg-card">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4 border-b p-4 last:border-b-0">
+            <Skeleton className="h-4 w-4 shrink-0 rounded" />
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="ml-auto h-4 w-20" />
+          </div>
         ))}
       </div>
     );
@@ -323,8 +328,9 @@ export function SubscriptionsTable({
 
   if (sortedSubscriptions.length === 0 && statusFilter === 'all' && !searchQuery) {
     return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">No subscriptions found</p>
+      <div className="rounded-xl border border-dashed bg-card/40 px-6 py-16 text-center">
+        <p className="font-medium">{'No subscriptions yet'}</p>
+        <p className="mt-1 text-sm text-muted-foreground">Subscriptions from the connected store appear here.</p>
       </div>
     );
   }
@@ -332,31 +338,28 @@ export function SubscriptionsTable({
   return (
     <div className="space-y-4">
       {/* Status Filter */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">Filter:</span>
-        <div className="flex gap-1">
-          <Button
-            variant={statusFilter === 'all' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setStatusFilter('all')}
+      <div className="inline-flex rounded-lg border bg-muted/40 p-0.5" role="group" aria-label="Filter by status">
+        {([
+          ['all', 'All', statusCounts.all],
+          ['active', 'Active', statusCounts.active],
+          ['inactive', 'Inactive', statusCounts.inactive],
+        ] as const).map(([value, label, count]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={statusFilter === value}
+            onClick={() => setStatusFilter(value)}
+            className={cn(
+              'rounded-md px-3 py-1.5 text-sm transition-colors',
+              statusFilter === value
+                ? 'bg-background font-medium text-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
           >
-            All ({statusCounts.all})
-          </Button>
-          <Button
-            variant={statusFilter === 'active' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setStatusFilter('active')}
-          >
-            Active ({statusCounts.active})
-          </Button>
-          <Button
-            variant={statusFilter === 'inactive' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setStatusFilter('inactive')}
-          >
-            Inactive ({statusCounts.inactive})
-          </Button>
-        </div>
+            {label}
+            <span className="ml-1.5 tabular-nums text-muted-foreground">{count}</span>
+          </button>
+        ))}
       </div>
 
       {sortedSubscriptions.length === 0 ? (
@@ -368,7 +371,7 @@ export function SubscriptionsTable({
           </p>
         </div>
       ) : (
-      <div className="rounded-md border">
+      <div className="overflow-hidden rounded-xl border bg-card">
       <Table>
         <TableHeader>
           <TableRow>
@@ -386,7 +389,7 @@ export function SubscriptionsTable({
             <TableHead>
               <Button
                 variant="ghost"
-                className="h-auto p-0 font-semibold hover:bg-transparent"
+                className="h-auto gap-1 p-0 text-xs font-medium tracking-wide text-muted-foreground uppercase hover:bg-transparent hover:text-foreground"
                 onClick={() => handleSort('productId')}
               >
                 Product ID / Name
@@ -398,7 +401,7 @@ export function SubscriptionsTable({
                 <TableHead>
                   <Button
                     variant="ghost"
-                    className="h-auto p-0 font-semibold hover:bg-transparent"
+                    className="h-auto gap-1 p-0 text-xs font-medium tracking-wide text-muted-foreground uppercase hover:bg-transparent hover:text-foreground"
                     onClick={() => handleSort('basePlans')}
                   >
                     Base Plans
@@ -408,7 +411,7 @@ export function SubscriptionsTable({
                 <TableHead>
                   <Button
                     variant="ghost"
-                    className="h-auto p-0 font-semibold hover:bg-transparent"
+                    className="h-auto gap-1 p-0 text-xs font-medium tracking-wide text-muted-foreground uppercase hover:bg-transparent hover:text-foreground"
                     onClick={() => handleSort('status')}
                   >
                     Active Plans
@@ -430,7 +433,7 @@ export function SubscriptionsTable({
                 <TableHead>
                   <Button
                     variant="ghost"
-                    className="h-auto p-0 font-semibold hover:bg-transparent"
+                    className="h-auto gap-1 p-0 text-xs font-medium tracking-wide text-muted-foreground uppercase hover:bg-transparent hover:text-foreground"
                     onClick={() => handleSort('status')}
                   >
                     Status
@@ -503,7 +506,7 @@ export function SubscriptionsTable({
                         {subscription.basePlans?.length || 0}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="default">
+                        <Badge variant={getActiveBasePlansCount(subscription) > 0 ? 'tint' : 'secondary'}>
                           {getActiveBasePlansCount(subscription)} active
                         </Badge>
                       </TableCell>
@@ -531,7 +534,7 @@ export function SubscriptionsTable({
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={isSubscriptionActive(subscription, 'apple') ? 'default' : 'secondary'}>
+                        <Badge variant={isSubscriptionActive(subscription, 'apple') ? 'tint' : 'secondary'}>
                           {isSubscriptionActive(subscription, 'apple') ? 'active' : 'inactive'}
                         </Badge>
                       </TableCell>

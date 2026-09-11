@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CreditCard } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -81,22 +81,23 @@ export default function GoogleSubscriptionDetailPage({
       />
 
       <div className="flex-1 p-6 space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/dashboard/google/subscriptions">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div className="flex-1">
-            {isLoading ? (
-              <Skeleton className="h-8 w-64" />
-            ) : (
-              <>
-                <h1 className="text-2xl font-bold">{getSubscriptionTitle()}</h1>
-                <p className="text-muted-foreground font-mono">{decodedId}</p>
-              </>
-            )}
-          </div>
+        <div>
+          <Link
+            href="/dashboard/google/subscriptions"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Subscriptions
+          </Link>
+          {isLoading ? (
+            <Skeleton className="mt-4 h-8 w-64" />
+          ) : (
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-medium text-primary">Google Play · Subscription</p>
+              <h1 className="text-2xl font-semibold tracking-tight">{getSubscriptionTitle()}</h1>
+              <p className="mt-1 font-mono text-sm text-muted-foreground">{decodedId}</p>
+            </div>
+          )}
         </div>
 
         {isLoading ? (
@@ -108,35 +109,32 @@ export default function GoogleSubscriptionDetailPage({
           <>
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Subscription Details
-                </CardTitle>
+                <CardTitle className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Subscription Details</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Status</p>
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Status</p>
                     <Badge
-                      variant={subscription.archived ? 'secondary' : 'default'}
+                      variant={subscription.archived ? 'secondary' : 'tint'}
                       className="mt-1"
                     >
                       {subscription.archived ? 'Archived' : 'Active'}
                     </Badge>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Base Plans</p>
-                    <p className="font-medium mt-1">
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Base Plans</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums">
                       {subscription.basePlans?.length || 0} total
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Base Price</p>
-                    <p className="font-medium mt-1">{getBasePrice()}</p>
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Base Price</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums">{getBasePrice()}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Regions</p>
-                    <p className="font-medium mt-1">{getTotalRegions()}</p>
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Regions</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums">{getTotalRegions()}</p>
                   </div>
                 </div>
 
@@ -150,7 +148,7 @@ export default function GoogleSubscriptionDetailPage({
             </Card>
 
             <div>
-              <h2 className="text-lg font-semibold mb-4">Base Plans</h2>
+              <h2 className="mb-4 text-xs font-medium tracking-wide text-muted-foreground uppercase">Base Plans</h2>
               <BasePlanEditor subscription={subscription} />
             </div>
           </>

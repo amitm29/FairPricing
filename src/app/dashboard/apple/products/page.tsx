@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Header } from '@/components/layout';
+import { Header, PageHeader } from '@/components/layout';
 import { ProductsTable } from '@/components/products/products-table';
 import { BulkUpdateModal } from '@/components/pricing/bulk-update-modal';
 import { Button } from '@/components/ui/button';
@@ -71,32 +71,22 @@ export default function AppleProductsPage() {
         onSearchChange={setSearchQuery}
       />
 
-      <div className="flex-1 p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">In-App Products</h1>
-            <p className="text-muted-foreground">
-              Manage pricing for one-time purchase products
-            </p>
-          </div>
+      <div className="flex-1 space-y-6 p-6">
+        <PageHeader eyebrow="App Store" title="In-App Products" description="Manage pricing for one-time purchase products" />
 
-          {selectedProductSkus.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                {selectedProductSkus.length} selected
-              </span>
-              <Button onClick={() => setBulkModalOpen(true)}>
-                Bulk Update Prices
+        {selectedProductSkus.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+            <span className="text-sm font-medium">{selectedProductSkus.length} selected</span>
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setSelectedProducts([])}>
+                Clear
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => setSelectedProducts([])}
-              >
-                Clear Selection
+              <Button size="sm" onClick={() => setBulkModalOpen(true)}>
+                Bulk update prices
               </Button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <ProductsTable
           products={products}

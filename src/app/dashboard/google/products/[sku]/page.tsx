@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Package } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -59,22 +59,23 @@ export default function GoogleProductDetailPage({
       />
 
       <div className="flex-1 p-6 space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/dashboard/google/products">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div className="flex-1">
-            {isLoading ? (
-              <Skeleton className="h-8 w-64" />
-            ) : (
-              <>
-                <h1 className="text-2xl font-bold">{getProductTitle()}</h1>
-                <p className="text-muted-foreground font-mono">{decodedSku}</p>
-              </>
-            )}
-          </div>
+        <div>
+          <Link
+            href="/dashboard/google/products"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Products
+          </Link>
+          {isLoading ? (
+            <Skeleton className="mt-4 h-8 w-64" />
+          ) : (
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-medium text-primary">Google Play · Product</p>
+              <h1 className="text-2xl font-semibold tracking-tight">{getProductTitle()}</h1>
+              <p className="mt-1 font-mono text-sm text-muted-foreground">{decodedSku}</p>
+            </div>
+          )}
         </div>
 
         {isLoading ? (
@@ -86,25 +87,22 @@ export default function GoogleProductDetailPage({
           <>
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  Product Details
-                </CardTitle>
+                <CardTitle className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Product Details</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Status</p>
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Status</p>
                     <Badge
-                      variant={product.status === 'active' ? 'default' : 'secondary'}
+                      variant={product.status === 'active' ? 'tint' : 'secondary'}
                       className="mt-1"
                     >
                       {product.status}
                     </Badge>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Type</p>
-                    <p className="font-medium mt-1">
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Type</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums">
                       {product.purchaseType === 'managedUser'
                         ? 'Managed Product'
                         : product.purchaseType}

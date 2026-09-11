@@ -4,3 +4,5 @@ export { Footer } from './footer';
 export { Breadcrumbs } from './breadcrumbs';
 export { PlatformSelector } from './platform-selector';
 export { ConnectPlatformModal } from './connect-platform-modal';
+export { PageHeader } from './page-header';
+export { StatCard } from './stat-card';
