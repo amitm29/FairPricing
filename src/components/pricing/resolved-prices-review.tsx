@@ -11,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatPrice } from '@/lib/fairpricing/workspace';
 
 export interface ResolvedPriceRow {
@@ -89,7 +88,9 @@ export function ResolvedPricesReview({
           <Stat label="Unchanged" value={unchangedCount} />
         </div>
 
-        <ScrollArea className="min-h-0 flex-1 rounded-lg border">
+        {/* A plain scroller: a Radix ScrollArea viewport is height:100%, which
+            cannot resolve inside a max-h dialog and grows to the full list. */}
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border">
           <div className="divide-y">
             {differing.length > 0 && (
               <section>
@@ -141,7 +142,7 @@ export function ResolvedPricesReview({
               </details>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="shrink-0 gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isApplying}>
