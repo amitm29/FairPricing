@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
+import { describeLadderAge } from '@/lib/apple-connect/tier-ladder';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -53,6 +54,9 @@ export function ResolvedPricesReview({
   isApplying,
   applyProgress,
   onConfirm,
+  ladder,
+  onRefresh,
+  isRefreshing = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -62,6 +66,11 @@ export function ResolvedPricesReview({
   isApplying: boolean;
   applyProgress?: string | null;
   onConfirm: () => void;
+  /** How the tiers were obtained; null when resolved territory by territory. */
+  ladder?: { fetchedAt: string; source: 'cache' | 'live' } | null;
+  /** Re-fetch the tier ladder from App Store Connect and resolve again. */
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }) {
   const { differing, matching } = useMemo(() => partitionResolved(rows), [rows]);
 
@@ -76,10 +85,37 @@ export function ResolvedPricesReview({
         <DialogHeader className="shrink-0">
           <DialogTitle>Review what App Store Connect resolved</DialogTitle>
           <DialogDescription>
-            These are the prices Apple will actually charge. The preview came from a bundled snapshot of Apple&rsquo;s
-            tiers; the store was asked for its current price points in every selected territory.
+            These are the prices Apple will actually charge, resolved against App Store Connect&rsquo;s own price points
+            rather than the bundled snapshot the preview uses.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+          {ladder ? (
+            <>
+              <span>
+                Tiers from App Store Connect, fetched{' '}
+                <span className="font-medium text-foreground">
+                  {ladder.source === 'live' ? 'just now' : describeLadderAge({ kind: 'iap', fetchedAt: ladder.fetchedAt, fetchedVia: '', territories: {} })}
+                </span>
+                {ladder.source === 'cache' && ' and checked against a live sample'}.
+              </span>
+              {onRefresh && ladder.source === 'cache' && (
+                <button
+                  type="button"
+                  onClick={onRefresh}
+                  disabled={isApplying || isRefreshing}
+                  className="ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {isRefreshing ? 'Refreshing…' : 'Refresh from App Store'}
+                </button>
+              )}
+            </>
+          ) : (
+            <span>Resolved territory by territory against App Store Connect.</span>
+          )}
+        </div>
 
         <div className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label="Will be written" value={rows.length} />

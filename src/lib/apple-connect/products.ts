@@ -1,3 +1,4 @@
+import { decodePricePointId, encodePricePointId as encodeSharedPricePointId } from './price-point-id';
 import type {
   AppleConnectCredentials,
   AppleInAppPurchase,
@@ -286,23 +287,12 @@ export async function getBaseTerritoryForProduct(
 
 // Helper to decode Apple's base64-encoded price ID
 function decodePriceId(encodedId: string): { sourceId?: string; territoryCode?: string; pricePointRef?: string } | null {
-  try {
-    const decoded = Buffer.from(encodedId, 'base64').toString('utf-8');
-    const parsed = JSON.parse(decoded);
-    return {
-      sourceId: parsed.s,       // "s" is source ID (app ID or similar)
-      territoryCode: parsed.t,  // "t" is territory code (e.g., "USA")
-      pricePointRef: parsed.p,  // "p" is price point reference (tier)
-    };
-  } catch {
-    return null;
-  }
+  const parts = decodePricePointId(encodedId);
+  return parts ? { sourceId: parts.sourceId, territoryCode: parts.territoryCode, pricePointRef: parts.tierRef } : null;
 }
 
-// Helper to encode a price point ID
 function encodePricePointId(sourceId: string, territoryCode: string, priceTier: string): string {
-  const data = { s: sourceId, t: territoryCode, p: priceTier };
-  return Buffer.from(JSON.stringify(data)).toString('base64');
+  return encodeSharedPricePointId({ sourceId, territoryCode, tierRef: priceTier });
 }
 
 // Get prices for an in-app purchase using price schedules

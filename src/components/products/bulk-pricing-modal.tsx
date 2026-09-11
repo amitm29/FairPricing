@@ -67,7 +67,10 @@ import {
   type DynamicPPPData,
   type DynamicExchangeRates,
 } from '@/lib/google-play/currency';
-import { useUpdateProductPrices, useResolveAppleProductPricePoints } from '@/hooks/use-products';
+import { useUpdateProductPrices } from '@/hooks/use-products';
+import { useAppleTierResolution } from '@/hooks/use-apple-tier-resolution';
+import { useCachedTierLadder } from '@/hooks/use-cached-tier-ladder';
+import { closestRung, describeLadderAge } from '@/lib/apple-connect/tier-ladder';
 
 // Re-exported from shared util for backwards compatibility within this module.
 const getCurrencySymbol = sharedGetCurrencySymbol;
@@ -237,12 +240,14 @@ export function BulkPricingModal({
   const [exchangeRatesFetched, setExchangeRatesFetched] = useState(false);
 
   const updateMutation = useUpdateProductPrices(platform);
-  const resolveMutation = useResolveAppleProductPricePoints();
+  const resolveMutation = useAppleTierResolution('iap');
+  const cachedLadder = useCachedTierLadder('iap', platform === 'apple' && !onSave);
   const [review, setReview] = useState<{
     rows: ResolvedPriceRow[];
     resolved: Record<string, { pricePointId: string; tierPrice: number }>;
     skipped: { code: string; name: string }[];
     unchangedCount: number;
+    ladder: { fetchedAt: string; source: 'cache' | 'live' } | null;
   } | null>(null);
   const [isApplying, setIsApplying] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -414,8 +419,10 @@ export function BulkPricingModal({
     );
 
     // For Apple, match each calculated price to the closest available tier
+    // Prefer Apple's real ladder when a fresh one is cached; the snapshot is the fallback.
     const finalPrices = platform === 'apple' ? calculatedPrices.map(calculated => {
-      const closestTier = findClosestTierForCurrency(moneyToNumber(calculated.price), calculated.currencyCode);
+      const rung = closestRung(cachedLadder.ladder?.territories[calculated.regionCode], moneyToNumber(calculated.price));
+      const closestTier = rung ? { tier: rung.ref, price: rung.price } : findClosestTierForCurrency(moneyToNumber(calculated.price), calculated.currencyCode);
       if (closestTier) {
         return {
           ...calculated,
@@ -436,7 +443,7 @@ export function BulkPricingModal({
     } catch (error) {
       return { prices: [], error: error instanceof Error ? error.message : 'Unable to calculate regional prices.' };
     }
-  }, [basePriceNum, targetRegions, strategy, rounding, pricingOptions, overrides, pppData, actualCurrencies, exchangeRates, platform, baseCurrency, baseRegion]);
+  }, [basePriceNum, targetRegions, strategy, rounding, pricingOptions, overrides, pppData, actualCurrencies, exchangeRates, platform, baseCurrency, baseRegion, cachedLadder.ladder]);
 
   // Get current price for a region
   const getCurrentPrice = useCallback((regionCode: string): Money | null => {
@@ -627,7 +634,7 @@ export function BulkPricingModal({
   // points, so both keep the summary dialog.
   const reviewsAgainstAppStore = platform === 'apple' && !onSave;
 
-  const handleApplyClick = async () => {
+  const handleApplyClick = async (refresh = false) => {
     if (selectedRegions.size === 0) {
       toast.error('Please select at least one region');
       return;
@@ -653,7 +660,8 @@ export function BulkPricingModal({
         };
       }
       try {
-        const { resolved, skipped } = await resolveMutation.mutateAsync({ sku: product.sku, territories });
+        const { resolved, skipped, ladder } = await resolveMutation.mutateAsync({ id: product.sku, territories, refresh });
+        if (ladder?.source === 'live') cachedLadder.reload();
         if (Object.keys(resolved).length === 0) {
           toast.error('Failed to resolve any prices to Apple price points');
           return;
@@ -676,6 +684,7 @@ export function BulkPricingModal({
           resolved,
           skipped: skipped.map((code) => ({ code, name: allRegions.find((region) => region.code === code)?.name ?? code })),
           unchangedCount: allRegions.length - rows.length - skipped.length,
+          ladder,
         });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to resolve price points');
@@ -743,6 +752,8 @@ export function BulkPricingModal({
       setReview(null);
       onOpenChange(false);
     } catch (error) {
+      // Apple rejected something we sent; the cached tiers may have moved.
+      await resolveMutation.invalidate();
       toast.error(error instanceof Error ? error.message : 'Failed to update prices');
     } finally {
       setIsApplying(false);
@@ -998,6 +1009,13 @@ export function BulkPricingModal({
                 </Button>
               </div>
             </div>
+            {reviewsAgainstAppStore && (
+              <p className="text-xs text-muted-foreground">
+                {cachedLadder.ladder
+                  ? <>Tiers in this preview: <span className="font-medium text-foreground">App Store Connect</span>, fetched {describeLadderAge(cachedLadder.ladder)}.</>
+                  : <>Tiers in this preview: <span className="font-medium text-foreground">bundled snapshot</span>. Review resolves them live against App Store Connect.</>}
+              </p>
+            )}
             <RegionFilterBar
               query={regionQuery}
               onQueryChange={setRegionQuery}
@@ -1201,15 +1219,13 @@ export function BulkPricingModal({
             Cancel
           </Button>
           <Button
-            onClick={handleApplyClick}
+            onClick={() => handleApplyClick()}
             disabled={previewPrices.length === 0 || isApplying || resolveMutation.isPending}
           >
             {resolveMutation.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                {resolveMutation.progress
-                  ? `Resolving price points ${resolveMutation.progress.completed} of ${resolveMutation.progress.total}…`
-                  : 'Resolving price points…'}
+                {resolveMutation.label}
               </>
             ) : isApplying ? (
               <>
@@ -1232,6 +1248,9 @@ export function BulkPricingModal({
           unchangedCount={review?.unchangedCount ?? 0}
           isApplying={isApplying}
           onConfirm={confirmApply}
+          ladder={review?.ladder ?? null}
+          onRefresh={() => handleApplyClick(true)}
+          isRefreshing={resolveMutation.isPending}
         />
 
         {/* Confirmation Dialog (Google Play) */}

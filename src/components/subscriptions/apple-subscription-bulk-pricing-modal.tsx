@@ -66,7 +66,10 @@ import {
   type DynamicPPPData,
   type DynamicExchangeRates,
 } from '@/lib/google-play/currency';
-import { useUpdateAppleSubscriptionPrices, useResolveAppleSubscriptionPricePoints } from '@/hooks/use-subscriptions';
+import { useUpdateAppleSubscriptionPrices } from '@/hooks/use-subscriptions';
+import { useAppleTierResolution } from '@/hooks/use-apple-tier-resolution';
+import { useCachedTierLadder } from '@/hooks/use-cached-tier-ladder';
+import { closestRung, describeLadderAge } from '@/lib/apple-connect/tier-ladder';
 
 // Format price with currency
 function formatPrice(price: string | number, currency: string): string {
@@ -182,6 +185,7 @@ export function AppleSubscriptionBulkPricingModal({
     resolved: Record<string, { pricePointId: string; tierPrice: number }>;
     skipped: { code: string; name: string }[];
     unchangedCount: number;
+    ladder: { fetchedAt: string; source: 'cache' | 'live' } | null;
   } | null>(null);
   const [sortConfig, setSortConfig] = useState<{
     key: string;
@@ -197,7 +201,8 @@ export function AppleSubscriptionBulkPricingModal({
   const [exchangeRates, setExchangeRates] = useState<DynamicExchangeRates | null>(null);
   const [exchangeRatesLoading, setExchangeRatesLoading] = useState(false);
 
-  const resolveMutation = useResolveAppleSubscriptionPricePoints();
+  const resolveMutation = useAppleTierResolution('subscription');
+  const cachedLadder = useCachedTierLadder('subscription');
   const updateMutation = useUpdateAppleSubscriptionPrices();
 
   const basePriceNum = parseFloat(basePrice) || 0;
@@ -370,8 +375,10 @@ export function AppleSubscriptionBulkPricingModal({
       const alpha3 = alpha2ToAlpha3(calculated.regionCode) || calculated.regionCode;
       const currency = calculated.currencyCode;
 
-      // Find closest Apple tier for this price/currency
-      const closestTier = findClosestTierForCurrency(Number(calculated.price.units) + (calculated.price.nanos ?? 0) / 1e9, currency);
+      // Find the closest Apple tier: the real ladder when a fresh one is cached, the snapshot otherwise.
+      const target = Number(calculated.price.units) + (calculated.price.nanos ?? 0) / 1e9;
+      const rung = closestRung(cachedLadder.ladder?.territories[alpha3], target);
+      const closestTier = rung ? { tier: rung.ref, price: rung.price } : findClosestTierForCurrency(target, currency);
 
       const tierPrice = closestTier?.price ?? calculated.rawPrice;
       const tier = closestTier?.tier ?? null;
@@ -408,7 +415,7 @@ export function AppleSubscriptionBulkPricingModal({
     } catch (error) {
       return { prices: [], error: error instanceof Error ? error.message : 'Unable to calculate regional prices.' };
     }
-  }, [basePriceNum, targetRegions, strategy, rounding, pricingOptions, overrides, pppData, actualCurrencies, exchangeRates, subscription.prices, baseRegion, baseCurrency]);
+  }, [basePriceNum, targetRegions, strategy, rounding, pricingOptions, overrides, pppData, actualCurrencies, exchangeRates, subscription.prices, baseRegion, baseCurrency, cachedLadder.ladder]);
 
   const sortedPreviewPrices = useMemo(() => {
     const items = [...previewPrices];
@@ -592,7 +599,7 @@ export function AppleSubscriptionBulkPricingModal({
   // actually charge in every selected territory (read-only, streamed
   // progress), then show that — with anything that differs from the preview
   // called out — and only write on Confirm.
-  const handleApplyClick = async () => {
+  const handleApplyClick = async (refresh = false) => {
     if (selectedRegions.size === 0) {
       toast.error('Please select at least one region');
       return;
@@ -613,20 +620,23 @@ export function AppleSubscriptionBulkPricingModal({
       return;
     }
 
-    const territories: Record<string, { targetPrice: number; currency: string; maxPrice?: number }> = {};
+    const territories: Record<string, { targetPrice: number; currency: string; maxPrice?: number; territory: string }> = {};
     for (const p of validPrices) {
       territories[p.territoryCode] = {
         targetPrice: p.tierPrice,
         ...(pricingOptions.capAtBase ? { maxPrice: p.tierPrice } : {}),
         currency: p.currency,
+        territory: p.territoryAlpha3,
       };
     }
 
     try {
-      const { resolved, skipped } = await resolveMutation.mutateAsync({
-        subscriptionId: subscription.id,
+      const { resolved, skipped, ladder } = await resolveMutation.mutateAsync({
+        id: subscription.id,
         territories,
+        refresh,
       });
+      if (ladder?.source === 'live') cachedLadder.reload();
       if (Object.keys(resolved).length === 0) {
         toast.error('Failed to resolve any prices to Apple price points');
         return;
@@ -641,6 +651,7 @@ export function AppleSubscriptionBulkPricingModal({
         resolved,
         skipped: skipped.map(code => ({ code, name: byCode.get(code)?.countryName ?? code })),
         unchangedCount: allTerritories.length - rows.length - skipped.length,
+        ladder,
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to resolve price points');
@@ -671,6 +682,8 @@ export function AppleSubscriptionBulkPricingModal({
       setReview(null);
       onOpenChange(false);
     } catch (error) {
+      // Apple rejected something we sent; the cached tiers may have moved.
+      await resolveMutation.invalidate();
       toast.error(error instanceof Error ? error.message : 'Failed to update prices');
     } finally {
       setIsSaving(false);
@@ -892,6 +905,13 @@ export function AppleSubscriptionBulkPricingModal({
                     </Button>
                   </div>
                 </div>
+                {(
+                  <p className="text-xs text-muted-foreground">
+                    {cachedLadder.ladder
+                      ? <>Tiers in this preview: <span className="font-medium text-foreground">App Store Connect</span>, fetched {describeLadderAge(cachedLadder.ladder)}.</>
+                      : <>Tiers in this preview: <span className="font-medium text-foreground">bundled snapshot</span>. Review resolves them live against App Store Connect.</>}
+                  </p>
+                )}
                 <RegionFilterBar
                   query={regionQuery}
                   onQueryChange={setRegionQuery}
@@ -1068,15 +1088,13 @@ export function AppleSubscriptionBulkPricingModal({
             Cancel
           </Button>
           <Button
-            onClick={handleApplyClick}
+            onClick={() => handleApplyClick()}
             disabled={previewPrices.length === 0 || isSaving || resolveMutation.isPending || updateMutation.isPending}
           >
             {resolveMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {resolveMutation.progress
-                  ? `Resolving price points ${resolveMutation.progress.completed} of ${resolveMutation.progress.total}…`
-                  : 'Resolving price points…'}
+                {resolveMutation.label}
               </>
             ) : (
               `Review ${validSelectedCount} resolved prices`
@@ -1093,6 +1111,9 @@ export function AppleSubscriptionBulkPricingModal({
           isApplying={isSaving || updateMutation.isPending}
           applyProgress={updateMutation.progress ? `${updateMutation.progress.phase === 'delete' ? 'Clearing' : 'Updating'} ${updateMutation.progress.completed} of ${updateMutation.progress.total}…` : null}
           onConfirm={confirmApply}
+          ladder={review?.ladder ?? null}
+          onRefresh={() => handleApplyClick(true)}
+          isRefreshing={resolveMutation.isPending}
         />
       </DialogContent>
     </Dialog>
