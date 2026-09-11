@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { Pencil, X } from 'lucide-react';
-import { calculateBulkPrices, calculateRegionalPrice, DEFAULT_BLEND, type PricingOptions, type PricingStrategy, type RoundingMode } from '@/lib/google-play/currency';
+import { calculateBulkPrices, DEFAULT_BLEND, type PricingOptions, type PricingStrategy, type RoundingMode } from '@/lib/google-play/currency';
+import { parseMoney } from '@/lib/google-play/types';
+import { currencyDigits } from '@/lib/pricing/rounding';
 
 export function useSavedPricingSetting<T>(key: string, field: string, initial: T): [T, (value: T) => void] {
   const storageKey = `fairpricing:config:${key}:${field}`;
@@ -208,11 +210,34 @@ export function RegionalOverride({ region, value, computed, onChange }: {
 }
 
 export function calculateConnectedPrices(overrides: Record<string, number>, ...args: Parameters<typeof calculateBulkPrices>) {
+  const [, , , , , , , , , , getTiers, options] = args;
   return calculateBulkPrices(...args).map(item => {
     const override = overrides[item.regionCode];
     if (override === undefined) return item;
+
+    // A manual price is the user's decision and is applied exactly as typed:
+    // no strategy, no charm ending, and none of the bounds — min/max share of
+    // FX, cap-at-base and the bundled regional minimum all exist to keep
+    // *calculated* prices sensible. What remains is only what the store itself
+    // enforces: the currency's decimal places, and Apple's price tiers.
+    const scale = 10 ** currencyDigits(item.currencyCode);
+    let price = Math.round(override * scale) / scale;
+    const tiers = options?.snapToTiers ? getTiers?.(item.currencyCode) : undefined;
+    if (tiers?.length) {
+      price = tiers.reduce((best, tier) => Math.abs(tier.price - price) < Math.abs(best.price - price) ? tier : best).price;
+    }
+
+    // Keep the derived fields coherent so "vs FX" columns read correctly:
+    // multiplier is price / FX, and adjustedUsdPrice / multiplier * rate is FX.
     const fxPrice = item.adjustedUsdPrice / item.multiplier * item.exchangeRate;
-    const [base, , , , , ppp, currencies, rates, baseCurrency, baseRegion, tiers, options] = args;
-    return calculateRegionalPrice(base, item.regionCode, 'custom', 'none', override / fxPrice, ppp, currencies, rates, baseCurrency, baseRegion, tiers, options);
+    const multiplier = Number.isFinite(fxPrice) && fxPrice > 0 ? price / fxPrice : item.multiplier;
+    return {
+      ...item,
+      price: parseMoney(price, item.currencyCode),
+      rawPrice: price,
+      multiplier,
+      multiplierSource: 'custom' as const,
+      adjustedUsdPrice: price / item.exchangeRate,
+    };
   });
 }
