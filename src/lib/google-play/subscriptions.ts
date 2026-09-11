@@ -7,8 +7,6 @@ import type {
   Money,
   RegionsVersion,
 } from './types';
-import { GOOGLE_PLAY_REGIONS, moneyToNumber } from './types';
-import { calculateBulkPrices } from './currency';
 
 interface GoogleApiSubscription extends Subscription {
   regionsVersion?: RegionsVersion;
@@ -101,6 +99,34 @@ export async function getBasePlan(
   return subscription.basePlans?.find(bp => bp.basePlanId === basePlanId) || null;
 }
 
+/**
+ * Merge a set of priced regions into a base plan's existing configs.
+ *
+ * Regions in `updates` are set and made available to new subscribers, since
+ * the developer is deliberately pricing them. Every other existing region is
+ * kept exactly as it is — including one closed to new subscribers. Regions
+ * absent from both stay absent: a region that was never part of the plan is
+ * not added on the developer's behalf. Google Play accepts a plan that does
+ * not cover every region, so nothing here needs to be filled in.
+ */
+export function mergeRegionalConfigs(
+  existing: RegionalBasePlanConfig[],
+  updates: RegionalBasePlanConfig[]
+): RegionalBasePlanConfig[] {
+  const merged = new Map<string, RegionalBasePlanConfig>();
+  for (const config of existing) merged.set(config.regionCode, config);
+  for (const config of updates) merged.set(config.regionCode, { ...config, newSubscriberAvailability: true });
+  return Array.from(merged.values());
+}
+
+/** Remove one region from a base plan's configs. Nothing is added in its place. */
+export function removeRegionalConfig(
+  existing: RegionalBasePlanConfig[],
+  regionCode: string
+): RegionalBasePlanConfig[] {
+  return existing.filter((config) => config.regionCode !== regionCode);
+}
+
 export async function updateBasePlanPrices(
   credentials: ServiceAccountCredentials,
   packageName: string,
@@ -118,56 +144,7 @@ export async function updateBasePlanPrices(
     throw new Error(`Base plan ${basePlanId} not found in subscription ${productId}`);
   }
 
-  const existingConfigs = basePlan.regionalConfigs || [];
-  const configMap = new Map<string, RegionalBasePlanConfig>();
-
-  for (const config of existingConfigs) {
-    configMap.set(config.regionCode, {
-      ...config,
-      newSubscriberAvailability: true,
-    });
-  }
-
-  for (const config of regionalConfigs) {
-    configMap.set(config.regionCode, {
-      ...config,
-      newSubscriberAvailability: true,
-    });
-  }
-
-  const mergedConfigs = Array.from(configMap.values());
-  const usConfig = mergedConfigs.find(c => c.regionCode === 'US');
-  if (!usConfig) {
-    throw new Error(`US price not found for base plan ${basePlanId}. Cannot calculate regional prices without a base USD price.`);
-  }
-  const baseUsdPrice = moneyToNumber(usConfig.price);
-
-  const allRegionCodes = GOOGLE_PLAY_REGIONS.map(r => r.code);
-  const missingRegions = allRegionCodes.filter(code => !configMap.has(code));
-
-  if (missingRegions.length > 0) {
-    const calculatedPrices = calculateBulkPrices(
-      baseUsdPrice,
-      missingRegions,
-      'direct', // Use simple exchange rate for fill-in regions
-      'nearest-99',
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      'USD',
-      'US'
-    );
-    for (const calculated of calculatedPrices) {
-      configMap.set(calculated.regionCode, {
-        regionCode: calculated.regionCode,
-        price: calculated.price,
-        newSubscriberAvailability: true,
-      });
-    }
-  }
-
-  const updatedConfigs = Array.from(configMap.values());
+  const updatedConfigs = mergeRegionalConfigs(basePlan.regionalConfigs || [], regionalConfigs);
 
   const updatedBasePlans = subscription.basePlans?.map(bp => {
     if (bp.basePlanId === basePlanId) {
@@ -220,47 +197,7 @@ export async function deleteBasePlanRegionPrice(
     throw new Error(`Base plan ${basePlanId} not found`);
   }
 
-  const filteredConfigs = (basePlan.regionalConfigs || []).filter(
-    config => config.regionCode !== regionCode
-  );
-
-  const configMap = new Map<string, RegionalBasePlanConfig>();
-  for (const config of filteredConfigs) {
-    configMap.set(config.regionCode, config);
-  }
-
-  const usConfig = filteredConfigs.find(c => c.regionCode === 'US');
-  if (!usConfig) {
-    throw new Error(`US price not found for base plan ${basePlanId}. Cannot calculate regional prices without a base USD price.`);
-  }
-  const baseUsdPrice = moneyToNumber(usConfig.price);
-
-  const allRegionCodes = GOOGLE_PLAY_REGIONS.map(r => r.code);
-  const missingRegions = allRegionCodes.filter(code => !configMap.has(code));
-
-  if (missingRegions.length > 0) {
-    const calculatedPrices = calculateBulkPrices(
-      baseUsdPrice,
-      missingRegions,
-      'direct',
-      'nearest-99',
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      'USD',
-      'US'
-    );
-    for (const calculated of calculatedPrices) {
-      configMap.set(calculated.regionCode, {
-        regionCode: calculated.regionCode,
-        price: calculated.price,
-        newSubscriberAvailability: true,
-      });
-    }
-  }
-
-  const updatedConfigs = Array.from(configMap.values());
+  const updatedConfigs = removeRegionalConfig(basePlan.regionalConfigs || [], regionCode);
 
   const updatedBasePlans = subscription.basePlans?.map(bp => {
     if (bp.basePlanId === basePlanId) {

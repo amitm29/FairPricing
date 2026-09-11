@@ -480,7 +480,8 @@ export function SubscriptionBulkPricingModal({
       const previewItem = previewPrices.find(p => p.regionCode === region.code);
       const isSelected = selectedRegions.has(region.code);
       const currentPrice = getCurrentPrice(region.code);
-      const currentPriceFormatted = currentPrice ? formatMoney(currentPrice) : 'None';
+      // A region the plan has never priced stays out of the plan unless it is selected.
+      const currentPriceFormatted = currentPrice ? formatMoney(currentPrice) : 'Not in plan';
 
       if (isSelected && previewItem) {
         changing.push({
@@ -893,7 +894,7 @@ export function SubscriptionBulkPricingModal({
                   {/* Section: Staying */}
                   <div>
                     <h4 className="font-semibold text-sm mb-2 text-muted-foreground flex items-center gap-2 sticky top-0 bg-background py-1 z-10">
-                      <span className="w-2 h-2 rounded-full bg-gray-300" />
+                      <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
                       No Change ({updateSummary?.staying.length})
                     </h4>
                     <div className="grid grid-cols-1 gap-1 pl-4 opacity-70 text-muted-foreground">

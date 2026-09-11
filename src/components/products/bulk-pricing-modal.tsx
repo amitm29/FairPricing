@@ -647,7 +647,7 @@ export function BulkPricingModal({
         changing.push({
           name: region.name,
           regionCode: region.code,
-          old: currentPrice ? formatMoney(currentPrice) : 'None',
+          old: currentPrice ? formatMoney(currentPrice) : 'Not priced',
           new: formatMoney(newPriceItem.price),
           isRequired
         });
@@ -655,7 +655,7 @@ export function BulkPricingModal({
         staying.push({
           name: region.name,
           regionCode: region.code,
-          price: currentPrice ? formatMoney(currentPrice) : 'None'
+          price: currentPrice ? formatMoney(currentPrice) : 'Not priced'
         });
       }
     });
@@ -1178,7 +1178,7 @@ export function BulkPricingModal({
                   {/* Section: Staying */}
                   <div>
                     <h4 className="font-semibold text-sm mb-2 text-muted-foreground flex items-center gap-2 sticky top-0 bg-background py-1 z-10">
-                      <span className="w-2 h-2 rounded-full bg-gray-300" />
+                      <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
                       No Change ({updateSummary?.staying.length})
                     </h4>
                     <div className="grid grid-cols-1 gap-1 pl-4 opacity-70 text-muted-foreground">
